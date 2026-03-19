@@ -23,7 +23,7 @@ body{background:#050505;color:#aaa;font-family:'Courier New',monospace;overflow:
 #scaleCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2}
 
 /* GL canvas inside scope with margins for labels */
-#glWrap{position:absolute;top:20px;left:44px;right:10px;bottom:24px;background:#000}
+#glWrap{position:absolute;top:20px;left:54px;right:10px;bottom:24px;background:#000}
 canvas#gl{display:block;width:100%;height:100%;background:#000}
 
 /* Source preview */
@@ -96,8 +96,8 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;heig
     <div class="sc">
       <div class="lb">MODE</div>
       <button class="mb a" onclick="setM(0)" id="m0">① CLASSIC<span class="d">密度→輝度</span></button>
-      <button class="mb" onclick="setM(1)" id="m1">② PARTICLE<span class="d">加算合成発光</span></button>
-      <button class="mb" onclick="setM(2)" id="m2">③ FIBER<span class="d">等密度線</span></button>
+      <button class="mb" onclick="setM(1)" id="m1">② NEBULA<span class="d">放射伝達 自己発光+吸収</span></button>
+      <button class="mb" onclick="setM(2)" id="m2">③ CAUSTICS<span class="d">密度屈折 集光模様</span></button>
     </div>
     <div class="sc">
       <div class="lb">DENSITY</div>
@@ -108,9 +108,10 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;heig
     <div class="sc">
       <div class="lb">RENDERING</div>
       <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div><input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-      <div class="sr" id="rPs"><div class="sh"><span class="sn">PARTICLE SIZE</span><span class="sv" id="vPs">2.0</span></div><input type="range" id="sPs" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP(0)"></div>
-      <div class="sr" id="rGl"><div class="sh"><span class="sn">GLOW</span><span class="sv" id="vGl">1.00</span></div><input type="range" id="sGl" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-      <div class="sr" id="rLd"><div class="sh"><span class="sn">LINE DENSITY</span><span class="sv" id="vLd">1.00</span></div><input type="range" id="sLd" min="0.2" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+      <div class="sr" id="rAb"><div class="sh"><span class="sn">ABSORPTION</span><span class="sv" id="vAb">0.50</span></div><input type="range" id="sAb" min="0.0" max="2.0" step="0.01" value="0.5" oninput="onP(0)"></div>
+      <div class="sr" id="rEm"><div class="sh"><span class="sn">EMISSION</span><span class="sv" id="vEm">1.50</span></div><input type="range" id="sEm" min="0.1" max="5.0" step="0.01" value="1.5" oninput="onP(0)"></div>
+      <div class="sr" id="rRf"><div class="sh"><span class="sn">REFRACTION</span><span class="sv" id="vRf">1.00</span></div><input type="range" id="sRf" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+      <div class="sr" id="rFc"><div class="sh"><span class="sn">FOCUS</span><span class="sv" id="vFc">1.00</span></div><input type="range" id="sFc" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
     </div>
     <div class="sc">
       <div class="lb">COLOR</div>
@@ -161,7 +162,9 @@ var programs = [];
 
 var P = {
   gain:1.0, gamma:1.0, spread:2.0,
-  intensity:1.0, psize:2.0, glow:1.0, ld:1.0,
+  intensity:1.0,
+  emission:1.5, absorption:0.5,
+  refraction:1.0, causticSharp:1.0,
   gridOp:0.2
 };
 
@@ -205,83 +208,116 @@ var frag0 = fHead + [
   '}'
 ].join('\n');
 
-// Mode 1: Particle
+// Mode 1: Radiative Transfer — density as light-emitting medium
+// Self-emission + absorption: dense regions glow, light fades through dense areas
 var frag1 = fHead + [
-  'uniform float u_psize;',
-  'uniform float u_glow;',
-  '',
-  'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
+  'uniform float u_emission;',
+  'uniform float u_absorption;',
   '',
   'void main(){',
   '  vec2 px = 1.0 / u_texSize;',
   '  vec4 dc = readDensity(v_uv);',
   '  float d = dc.a;',
+  '  vec3 srcCol = dc.rgb;',
   '',
-  '  float base = d * u_intensity * 0.4;',
-  '  base = base / (base + 0.2);',
-  '  vec3 acc = dc.rgb * base;',
+  '  // Ray march vertically through the density field (simulating looking through medium)',
+  '  // Sample a vertical column of neighbors to simulate optical depth',
+  '  vec3 accumulated = vec3(0.0);',
+  '  float transmittance = 1.0;',
+  '  int steps = 16;',
   '',
-  '  float cellPx = u_psize * 3.0;',
-  '  vec2 cs = vec2(cellPx) * px;',
-  '  vec2 ci = floor(v_uv / cs);',
+  '  for(int i = -8; i <= 8; i++){',
+  '    vec2 sampleUV = v_uv + vec2(0.0, float(i) * px.y * 2.0);',
+  '    if(sampleUV.y < 0.0 || sampleUV.y > 1.0) continue;',
+  '    vec4 sdc = readDensity(sampleUV);',
+  '    float sd = sdc.a;',
   '',
-  '  for(int dy=-1;dy<=1;dy++){',
-  '    for(int dx=-1;dx<=1;dx++){',
-  '      vec2 nc = ci + vec2(float(dx),float(dy));',
-  '      float rx = hash(nc);',
-  '      float ry = hash(nc+vec2(7,13));',
-  '      vec2 pUV = (nc + vec2(rx,ry)) * cs;',
-  '      if(pUV.x<0.0||pUV.x>1.0||pUV.y<0.0||pUV.y>1.0) continue;',
+  '    // Absorption: dense regions block light',
+  '    float tau = sd * u_absorption * 0.3;',
+  '    transmittance *= exp(-tau);',
   '',
-  '      vec4 pdc = readDensity(pUV);',
-  '      float pd = pdc.a;',
-  '      if(pd < 0.01) continue;',
-  '',
-  '      vec2 diff = (v_uv - pUV) / px;',
-  '      float dist2 = dot(diff,diff);',
-  '      float r = u_psize * (0.3 + pd*0.7);',
-  '      float fo = exp(-dist2/(r*r*u_glow));',
-  '',
-  '      float bright = pd * fo * u_intensity * 0.6;',
-  '      acc += pdc.rgb * bright;',
-  '    }',
+  '    // Emission: dense regions emit light',
+  '    vec3 emission = sdc.rgb * sd * sd * u_emission;',
+  '    accumulated += emission * transmittance;',
   '  }',
+  '',
+  '  // Also add horizontal scattering',
+  '  for(int i = -4; i <= 4; i++){',
+  '    vec2 sampleUV = v_uv + vec2(float(i) * px.x * 3.0, 0.0);',
+  '    if(sampleUV.x < 0.0 || sampleUV.x > 1.0) continue;',
+  '    vec4 sdc = readDensity(sampleUV);',
+  '    float sd = sdc.a;',
+  '    accumulated += sdc.rgb * sd * u_emission * 0.15 * transmittance;',
+  '  }',
+  '',
+  '  // Direct emission from this pixel',
+  '  accumulated += srcCol * d * d * u_emission * u_intensity * 2.0;',
+  '',
+  '  // Tone map',
+  '  accumulated = accumulated / (accumulated + vec3(0.4));',
+  '  accumulated *= u_intensity;',
+  '',
+  '  vec3 col = accumulated;',
   '',
   '  if(u_gridOp>0.001){',
   '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
   '         +smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.3;',
-  '    acc+=vec3(g)*vec3(0.3,0.35,0.4);',
+  '    col+=vec3(g)*vec3(0.3,0.35,0.4);',
   '  }',
-  '  gl_FragColor = vec4(acc, 1.0);',
+  '  gl_FragColor = vec4(col, 1.0);',
   '}'
 ].join('\n');
 
-// Mode 2: Fiber
+// Mode 2: Caustics — density as refracting surface, light concentration patterns
+// Density gradient deflects light rays, creating bright concentration lines
 var frag2 = fHead + [
-  'uniform float u_ld;',
+  'uniform float u_refraction;',
+  'uniform float u_causticSharp;',
   '',
   'void main(){',
   '  vec2 px = 1.0 / u_texSize;',
   '  vec4 dc = readDensity(v_uv);',
   '  float d = dc.a;',
   '',
+  '  // Compute density gradient (acts as surface normal of refracting medium)',
   '  float dR = readDensity(v_uv+vec2(px.x,0)).a;',
   '  float dL = readDensity(v_uv-vec2(px.x,0)).a;',
   '  float dU = readDensity(v_uv-vec2(0,px.y)).a;',
   '  float dD = readDensity(v_uv+vec2(0,px.y)).a;',
-  '  float gx = dR - dL;',
-  '  float gy = dD - dU;',
-  '  float grad = length(vec2(gx,gy));',
+  '  vec2 grad = vec2(dR-dL, dD-dU) * 0.5;',
   '',
-  '  float levels = 25.0 * u_ld;',
-  '  float f = fract(d * levels);',
-  '  float distL = min(f, 1.0-f);',
-  '  float pixD = distL / (grad*levels + 0.0001);',
-  '  float line = 1.0 - smoothstep(0.0, 1.2, pixD);',
+  '  // Refracted UV: where does the light hitting this point come from?',
+  '  vec2 refractedUV = v_uv - grad * u_refraction;',
+  '  refractedUV = clamp(refractedUV, vec2(0.0), vec2(1.0));',
   '',
-  '  float val = line * d * u_intensity * (0.3 + grad*15.0);',
-  '  val = val / (val + 0.2);',
-  '  vec3 col = dc.rgb * val;',
+  '  // Sample density at refracted position',
+  '  vec4 rdc = readDensity(refractedUV);',
+  '',
+  '  // Caustic intensity: light concentrates where Jacobian determinant is high',
+  '  // Approximate via second derivatives (curvature of density field)',
+  '  float d2x = dR + dL - 2.0 * d;',
+  '  float d2y = dU + dD - 2.0 * d;',
+  '  float dxy = (readDensity(v_uv+vec2(px.x,px.y)).a',
+  '             + readDensity(v_uv-vec2(px.x,px.y)).a',
+  '             - readDensity(v_uv+vec2(px.x,-px.y)).a',
+  '             - readDensity(v_uv-vec2(px.x,-px.y)).a) * 0.25;',
+  '',
+  '  // Jacobian-based caustic: where curvature focuses light',
+  '  float laplacian = abs(d2x + d2y);',
+  '  float det = abs(d2x * d2y - dxy * dxy);',
+  '  float caustic = laplacian * u_refraction * u_causticSharp;',
+  '  caustic = pow(caustic, 1.5);',
+  '  caustic = min(caustic, 5.0);',
+  '',
+  '  // Color: refracted source color modulated by caustic brightness',
+  '  vec3 col = rdc.rgb * (rdc.a + caustic) * u_intensity;',
+  '',
+  '  // Add gradient-magnitude edge glow',
+  '  float gradMag = length(grad);',
+  '  col += dc.rgb * gradMag * u_intensity * 3.0;',
+  '',
+  '  // Tone map',
+  '  col = col / (col + vec3(0.35));',
   '',
   '  if(u_gridOp>0.001){',
   '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
@@ -408,7 +444,8 @@ function buildDensity() {
   densityW = glCanvas.width;
   densityH = glCanvas.height;
 
-  var maxPreviewDim = 2048;
+  // Limit for performance (M3 can handle 4096 easily)
+  var maxPreviewDim = 4096;
   if (densityW > maxPreviewDim) {
     var s = maxPreviewDim / densityW;
     densityW = maxPreviewDim;
@@ -540,11 +577,14 @@ function uploadDensity(texData) {
   if (!densityTex) densityTex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, densityTex);
 
-  // texData is already Float32Array with RGBA: [avgR, avgG, avgB, normalizedDensity]
-  try {
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.FLOAT, texData);
-  } catch(e) {
-    // Fallback: encode to UNSIGNED_BYTE
+  var useFloat = false;
+  // Try float texture with proper GL error check
+  gl.getError(); // clear previous errors
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.FLOAT, texData);
+  if (gl.getError() === gl.NO_ERROR) {
+    useFloat = true;
+  } else {
+    // Fallback: encode to UNSIGNED_BYTE (loses precision but works everywhere)
     var bytes = new Uint8Array(densityW * densityH * 4);
     for (var i = 0; i < densityW * densityH; i++) {
       bytes[i*4]   = Math.min(255, Math.round(texData[i*4]   * 255));
@@ -559,6 +599,11 @@ function uploadDensity(texData) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  document.getElementById('stB').textContent =
+    'DENSITY: ' + densityW + 'x' + densityH +
+    ' | TEX: ' + (useFloat ? 'FLOAT32' : 'UINT8') +
+    ' | DPR: ' + (window.devicePixelRatio || 1);
 }
 
 // ===================== RENDER =====================
@@ -591,11 +636,12 @@ function render() {
   gl.uniform2f(gl.getUniformLocation(prog, 'u_texSize'), densityW, densityH);
 
   if (curMode === 1) {
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_psize'), P.psize);
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_glow'), P.glow);
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_emission'), P.emission);
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_absorption'), P.absorption);
   }
   if (curMode === 2) {
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_ld'), P.ld);
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_refraction'), P.refraction);
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_causticSharp'), P.causticSharp);
   }
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -631,12 +677,12 @@ function drawScale() {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'right';
 
-  // Y axis: 0 (bottom) to 100 (top) - luminance percentage
+  // Y axis: 0 (bottom) to 1023 (top) - 10-bit luminance scale
   var ySteps = 10;
   for (var i = 0; i <= ySteps; i++) {
     var frac = i / ySteps;
     var y = oy + gh - frac * gh;
-    var label = Math.round(frac * 100);
+    var label = Math.round(frac * 1023);
 
     // Tick mark
     ctx.beginPath();
@@ -698,7 +744,7 @@ function drawScale() {
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('LUMINANCE %', 0, 0);
+  ctx.fillText('LUMINANCE LEVEL', 0, 0);
   ctx.restore();
 
   // X axis label
@@ -811,9 +857,10 @@ function setM(m) {
 }
 
 function updateVis() {
-  document.getElementById('rPs').style.display = curMode===1?'':'none';
-  document.getElementById('rGl').style.display = curMode===1?'':'none';
-  document.getElementById('rLd').style.display = curMode===2?'':'none';
+  document.getElementById('rAb').style.display = curMode===1?'':'none';
+  document.getElementById('rEm').style.display = curMode===1?'':'none';
+  document.getElementById('rRf').style.display = curMode===2?'':'none';
+  document.getElementById('rFc').style.display = curMode===2?'':'none';
 }
 
 function onP(rebuild) {
@@ -821,18 +868,20 @@ function onP(rebuild) {
   P.gamma = parseFloat(document.getElementById('sGm').value);
   P.spread = parseFloat(document.getElementById('sSp').value);
   P.intensity = parseFloat(document.getElementById('sIn').value);
-  P.psize = parseFloat(document.getElementById('sPs').value);
-  P.glow = parseFloat(document.getElementById('sGl').value);
-  P.ld = parseFloat(document.getElementById('sLd').value);
+  P.absorption = parseFloat(document.getElementById('sAb').value);
+  P.emission = parseFloat(document.getElementById('sEm').value);
+  P.refraction = parseFloat(document.getElementById('sRf').value);
+  P.causticSharp = parseFloat(document.getElementById('sFc').value);
   P.gridOp = parseFloat(document.getElementById('sGr').value);
 
   document.getElementById('vG').textContent = P.gain.toFixed(2);
   document.getElementById('vGm').textContent = P.gamma.toFixed(2);
   document.getElementById('vSp').textContent = P.spread.toFixed(1);
   document.getElementById('vIn').textContent = P.intensity.toFixed(2);
-  document.getElementById('vPs').textContent = P.psize.toFixed(1);
-  document.getElementById('vGl').textContent = P.glow.toFixed(2);
-  document.getElementById('vLd').textContent = P.ld.toFixed(2);
+  document.getElementById('vAb').textContent = P.absorption.toFixed(2);
+  document.getElementById('vEm').textContent = P.emission.toFixed(2);
+  document.getElementById('vRf').textContent = P.refraction.toFixed(2);
+  document.getElementById('vFc').textContent = P.causticSharp.toFixed(2);
   document.getElementById('vGr').textContent = P.gridOp.toFixed(2);
 
   if (rebuild && srcLum) rebuildAndRender();
