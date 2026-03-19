@@ -2,918 +2,795 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>DENSITY FIELD v5b</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>DENSITY FIELD</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#050505;color:#aaa;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  width: 100%; height: 100%;
+  background: #0a0a0a;
+  color: #c0c0c0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+  min-height: 30px;
+}
+.header-title {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #505050;
+}
+.header-info {
+  font-size: 9px;
+  color: #383838;
+  letter-spacing: 1px;
+}
 
-#header{height:26px;display:flex;align-items:center;padding:0 10px;background:#080808;border-bottom:1px solid #111;flex-shrink:0;justify-content:space-between}
-#header .t{font-size:9px;letter-spacing:3px;color:#333}
-#header .t b{color:#666;font-weight:normal}
-#header .info{font-size:8px;color:#282828;letter-spacing:1px}
+/* Canvas area - reduced to give controls more room */
+.canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+}
+.canvas-wrap canvas { display: block; }
+.source-preview {
+  position: absolute;
+  top: 6px; right: 6px;
+  max-width: 56px; max-height: 56px;
+  border: 1px solid #1e1e1e;
+  opacity: 0.5;
+  display: none;
+  pointer-events: none;
+}
+.empty-state {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #252525;
+}
+.empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.4; }
+.empty-state .label { font-size: 9px; letter-spacing: 3px; }
 
-#main{flex:1;display:flex;position:relative;overflow:hidden}
+/* Controls - more spacious */
+.controls {
+  flex-shrink: 0;
+  padding: 12px 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid #1a1a1a;
+  background: #0c0c0c;
+}
+.cr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cl {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #444;
+  min-width: 42px;
+  text-align: right;
+}
+.cv {
+  font-size: 8px;
+  color: #555;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 1px;
+  background: #222;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #181818;
+  border: 1px solid #3a3a3a;
+}
+.color-section {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.color-section .cl { min-width: 42px; }
+.color-ch {
+  display: flex; align-items: center; gap: 3px; flex: 1;
+}
+.color-ch-label {
+  font-size: 7px; letter-spacing: 1px; min-width: 8px; text-align: center;
+}
+.color-ch-r { color: #775555; }
+.color-ch-g { color: #557755; }
+.color-ch-b { color: #555577; }
 
-/* Scope area: includes margin for scale labels */
-#scopeArea{position:absolute;top:0;left:0;right:240px;bottom:0;background:#050505;overflow:hidden}
-#scopeArea.full{right:0}
+/* Mode toggle */
+.mode-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+.mode-label {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #444;
+  min-width: 42px;
+  text-align: right;
+}
+.mode-btn {
+  padding: 5px 10px;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  color: #444;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+}
+.mode-btn.active {
+  border-color: #3a3a3a;
+  color: #888;
+  background: #1a1a1a;
+}
 
-/* Scale labels drawn by canvas overlay */
-#scaleCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2}
-
-/* GL canvas inside scope with margins for labels */
-#glWrap{position:absolute;top:20px;left:54px;right:10px;bottom:24px;background:#000}
-canvas#gl{display:block;width:100%;height:100%;background:#000}
-
-/* Source preview */
-#srcPrev{display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:3}
-#srcPrev.show{display:block}
-
-/* Hires */
-#hiOv{display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;background:#000}
-#hiOv.show{display:flex;align-items:center;justify-content:center}
-#hiOv img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-out}
-#hiCl{position:fixed;top:6px;right:6px;z-index:21;background:#0a0a0a;border:1px solid #2a2a2a;color:#666;font-family:'Courier New',monospace;font-size:8px;padding:3px 10px;cursor:pointer;letter-spacing:2px}
-
-/* Drop */
-#drOv{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(3,3,3,0.97);z-index:30;transition:opacity 0.3s}
-#drOv.hidden{opacity:0;pointer-events:none}
-#drOv .inn{border:1px dashed #222;padding:50px 70px;text-align:center}
-#drOv .inn p{font-size:10px;letter-spacing:3px;color:#383838}
-#drOv .inn .s{font-size:8px;color:#222;margin-top:4px}
-
-/* Panel */
-#pnl{position:absolute;top:0;right:0;width:240px;height:100%;background:#080808;border-left:1px solid #111;z-index:5;overflow-y:auto;padding:10px 9px;transition:transform 0.2s}
-#pnl.collapsed{transform:translateX(240px)}
-#togB{position:absolute;top:4px;z-index:6;background:#0a0a0a;border:1px solid #181818;color:#383838;font-family:'Courier New',monospace;font-size:8px;padding:2px 6px;cursor:pointer;letter-spacing:1px;transition:right 0.2s;right:246px}
-#togB.shifted{right:4px}
-.sc{margin-bottom:10px}
-.lb{font-size:7px;letter-spacing:2.5px;color:#2a2a2a;margin-bottom:5px;text-transform:uppercase;border-bottom:1px solid #111;padding-bottom:3px}
-.mb{display:block;width:100%;background:#090909;border:1px solid #131313;color:#4a4a4a;font-family:'Courier New',monospace;font-size:8px;padding:5px 6px;cursor:pointer;text-align:left;letter-spacing:0.5px;margin-bottom:1px;transition:all 0.1s}
-.mb:hover{border-color:#222;color:#777}
-.mb.a{border-color:#383838;color:#aaa;background:#0e0e0e}
-.mb .d{font-size:6.5px;color:#222;display:block;margin-top:1px}
-.mb.a .d{color:#333}
-.sr{margin-bottom:6px}
-.sh{display:flex;justify-content:space-between;margin-bottom:1px}
-.sn{font-size:7px;color:#303030;letter-spacing:1px}
-.sv{font-size:7px;color:#3a3a3a;font-variant-numeric:tabular-nums}
-input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#141414;outline:none;cursor:pointer}
-input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;height:10px;background:#333;border:none;cursor:pointer}
-.ab{background:#090909;border:1px solid #131313;color:#383838;font-family:'Courier New',monospace;font-size:7px;padding:4px 7px;cursor:pointer;letter-spacing:1.5px;width:100%;margin-bottom:2px;text-align:center;transition:all 0.1s}
-.ab:hover{border-color:#222;color:#666}
-.ab.hl{border-color:#2a2a2a;color:#777}
-.crow{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.csw{width:16px;height:16px;border:1px solid #1a1a1a;position:relative}
-.csw input{opacity:0;position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer}
-#stB{font-size:6.5px;color:#1a1a1a;letter-spacing:0.5px;margin-top:5px;line-height:1.5}
-#pnl::-webkit-scrollbar{width:2px}
-#pnl::-webkit-scrollbar-track{background:#060606}
-#pnl::-webkit-scrollbar-thumb{background:#151515}
+.btn-row {
+  display: flex;
+  gap: 5px;
+}
+.btn {
+  flex: 1;
+  padding: 10px 0;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  color: #555;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-align: center;
+  cursor: pointer;
+}
+.btn:active { background: #1a1a1a; color: #888; }
+.btn-primary { border-color: #2a2a2a; color: #777; }
+#fileInput { display: none; }
+.grid-overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
-<div id="header">
-  <div class="t"><b>DENSITY FIELD</b> · v5b</div>
-  <div class="info" id="hI"></div>
+<div class="app">
+  <div class="header">
+    <span class="header-title">DENSITY FIELD</span>
+    <span class="header-info" id="imgInfo">NO IMAGE</span>
+  </div>
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="glCanvas"></canvas>
+    <canvas class="grid-overlay" id="gridCanvas"></canvas>
+    <img class="source-preview" id="srcPreview" alt="">
+    <div class="empty-state" id="emptyState">
+      <div class="icon">&#9674;</div>
+      <div class="label">SELECT PHOTO</div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="mode-row">
+      <span class="mode-label">MODE</span>
+      <button class="mode-btn active" id="mPoints">POINTS</button>
+      <button class="mode-btn" id="mLines">LINES</button>
+    </div>
+    <div class="cr">
+      <span class="cl">GAMMA</span>
+      <input type="range" id="sGamma" min="0.2" max="3.0" step="0.05" value="1.0">
+      <span class="cv" id="vGamma">1.00</span>
+    </div>
+    <div class="cr">
+      <span class="cl">WEIGHT</span>
+      <input type="range" id="sWeight" min="0.001" max="0.12" step="0.001" value="0.018">
+      <span class="cv" id="vWeight">0.018</span>
+    </div>
+    <div class="cr">
+      <span class="cl">SIZE</span>
+      <input type="range" id="sSize" min="0.2" max="3.0" step="0.1" value="0.8">
+      <span class="cv" id="vSize">0.8</span>
+    </div>
+    <div class="cr">
+      <span class="cl">SUBDIV</span>
+      <input type="range" id="sSubdiv" min="1" max="4" step="1" value="1">
+      <span class="cv" id="vSubdiv">1</span>
+    </div>
+    <div class="color-section">
+      <span class="cl">COLOR</span>
+      <div class="color-ch">
+        <span class="color-ch-label color-ch-r">R</span>
+        <input type="range" id="sR" min="0" max="2.0" step="0.05" value="1.0">
+      </div>
+      <div class="color-ch">
+        <span class="color-ch-label color-ch-g">G</span>
+        <input type="range" id="sG" min="0" max="2.0" step="0.05" value="1.0">
+      </div>
+      <div class="color-ch">
+        <span class="color-ch-label color-ch-b">B</span>
+        <input type="range" id="sB" min="0" max="2.0" step="0.05" value="1.0">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnPhoto">PHOTO</button>
+      <button class="btn" id="btnSave">SAVE PNG</button>
+    </div>
+  </div>
 </div>
-<div id="main">
-  <div id="scopeArea">
-    <div id="glWrap"><canvas id="gl"></canvas></div>
-    <canvas id="scaleCanvas"></canvas>
-    <img id="srcPrev" alt="">
-  </div>
-  <div id="drOv">
-    <div class="inn"><p>DROP IMAGE</p><div class="s">or click to select</div></div>
-  </div>
-  <div id="hiOv">
-    <img id="hiImg" alt="">
-    <button id="hiCl" onclick="closeHi()">CLOSE</button>
-  </div>
-  <button id="togB" onclick="togPnl()">CTRL</button>
-  <div id="pnl">
-    <div class="sc">
-      <div class="lb">MODE</div>
-      <button class="mb a" onclick="setM(0)" id="m0">① CLASSIC<span class="d">密度→輝度</span></button>
-      <button class="mb" onclick="setM(1)" id="m1">② NEBULA<span class="d">放射伝達 自己発光+吸収</span></button>
-      <button class="mb" onclick="setM(2)" id="m2">③ CAUSTICS<span class="d">密度屈折 集光模様</span></button>
-    </div>
-    <div class="sc">
-      <div class="lb">DENSITY</div>
-      <div class="sr"><div class="sh"><span class="sn">GAIN</span><span class="sv" id="vG">1.00</span></div><input type="range" id="sG" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(1)"></div>
-      <div class="sr"><div class="sh"><span class="sn">GAMMA</span><span class="sv" id="vGm">1.00</span></div><input type="range" id="sGm" min="0.2" max="3.0" step="0.01" value="1.0" oninput="onP(1)"></div>
-      <div class="sr"><div class="sh"><span class="sn">SPREAD</span><span class="sv" id="vSp">2.0</span></div><input type="range" id="sSp" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP(1)"></div>
-    </div>
-    <div class="sc">
-      <div class="lb">RENDERING</div>
-      <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div><input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-      <div class="sr" id="rAb"><div class="sh"><span class="sn">ABSORPTION</span><span class="sv" id="vAb">0.50</span></div><input type="range" id="sAb" min="0.0" max="2.0" step="0.01" value="0.5" oninput="onP(0)"></div>
-      <div class="sr" id="rEm"><div class="sh"><span class="sn">EMISSION</span><span class="sv" id="vEm">1.50</span></div><input type="range" id="sEm" min="0.1" max="5.0" step="0.01" value="1.5" oninput="onP(0)"></div>
-      <div class="sr" id="rRf"><div class="sh"><span class="sn">REFRACTION</span><span class="sv" id="vRf">1.00</span></div><input type="range" id="sRf" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-      <div class="sr" id="rFc"><div class="sh"><span class="sn">FOCUS</span><span class="sv" id="vFc">1.00</span></div><input type="range" id="sFc" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-    </div>
-    <div class="sc">
-      <div class="lb">COLOR</div>
-      <div class="sr"><div class="sh"><span class="sn">COLOR SOURCE</span><span class="sv">IMAGE</span></div></div>
-    </div>
-    <div class="sc">
-      <div class="lb">SCALE</div>
-      <div class="sr"><div class="sh"><span class="sn">GRID OPACITY</span><span class="sv" id="vGr">0.20</span></div><input type="range" id="sGr" min="0.0" max="0.6" step="0.01" value="0.2" oninput="onP(0)"></div>
-    </div>
-    <div class="sc">
-      <div class="lb">OUTPUT</div>
-      <div class="sr"><div class="sh"><span class="sn">RENDER SCALE</span><span class="sv" id="vRs">2x</span></div><input type="range" id="sRs" min="1" max="4" step="1" value="2" oninput="onRs()"></div>
-      <button class="ab" onclick="togSrc()">SHOW SOURCE</button>
-      <button class="ab hl" onclick="renderHi()">HI-RES RENDER</button>
-      <button class="ab" onclick="loadImg()">LOAD IMAGE</button>
-      <button class="ab" onclick="savePng()">SAVE PNG</button>
-    </div>
-    <div id="stB"></div>
-  </div>
-</div>
-<input type="file" id="fIn" accept="image/*" style="display:none">
+<input type="file" id="fileInput" accept="image/*">
+
 <script>
-// ======================================================
-// DENSITY FIELD v5
-// CPU: density map at high resolution (anti-banding)
-// GPU: render from density texture (fast, sharp)
-// Color: generated from density, not from source
-// Scale: proper axis with numbers
-// ======================================================
+(function() {
+  "use strict";
 
-var glCanvas, gl, scopeArea, glWrap, scaleCanvas, scaleCtx;
-var srcImg = null;
-var srcW = 0, srcH = 0;
-var srcPixels = null;
-var srcLum = null;
-var srcR = null;
-var srcG_ = null;
-var srcB_ = null;
+  /* ---- DOM ---- */
+  var glCanvas   = document.getElementById("glCanvas");
+  var gridCanvas = document.getElementById("gridCanvas");
+  var canvasWrap = document.getElementById("canvasWrap");
+  var emptyState = document.getElementById("emptyState");
+  var srcPreview = document.getElementById("srcPreview");
+  var imgInfo    = document.getElementById("imgInfo");
+  var fileInput  = document.getElementById("fileInput");
+  var btnPhoto   = document.getElementById("btnPhoto");
+  var btnSave    = document.getElementById("btnSave");
 
-var densityTex = null;
-var densityW = 0, densityH = 0;
+  var sGamma  = document.getElementById("sGamma");
+  var vGamma  = document.getElementById("vGamma");
+  var sWeight = document.getElementById("sWeight");
+  var vWeight = document.getElementById("vWeight");
+  var sSize   = document.getElementById("sSize");
+  var vSize   = document.getElementById("vSize");
+  var sSubdiv = document.getElementById("sSubdiv");
+  var vSubdiv = document.getElementById("vSubdiv");
+  var sR = document.getElementById("sR");
+  var sG = document.getElementById("sG");
+  var sB = document.getElementById("sB");
+  var mPoints = document.getElementById("mPoints");
+  var mLines  = document.getElementById("mLines");
 
-var curMode = 0;
-var showingSrc = false;
-var renderScale = 2;
-var quadBuf = null;
-var programs = [];
+  /* ---- State ---- */
+  var sourceData = null;
+  var sourceW = 0, sourceH = 0;
+  var gl = null, progPoints = null, progLines = null;
+  var pointsBuf = null, linesBuf = null;
+  var pointsCount = 0, linesCount = 0;
+  var dispW = 0, dispH = 0;
+  var needRebuild = true;
+  var rafId = null;
+  var drawMode = "points"; /* "points" or "lines" */
 
-var P = {
-  gain:1.0, gamma:1.0, spread:2.0,
-  intensity:1.0,
-  emission:1.5, absorption:0.5,
-  refraction:1.0, causticSharp:1.0,
-  gridOp:0.2
-};
+  /* ---- Params ---- */
+  var gamma = 1.0, weight = 0.018, ptSize = 0.8;
+  var subdivLevel = 1;
+  var colorR = 1.0, colorG = 1.0, colorB = 1.0;
 
-// ===================== SHADERS =====================
+  /* ---- Uniform locs ---- */
+  var uPS_p = null, uW_p = null, uC_p = null;
+  var uW_l = null, uC_l = null;
 
-var vsrc = 'attribute vec2 a_pos;varying vec2 v_uv;void main(){v_uv=a_pos*0.5+0.5;gl_Position=vec4(a_pos,0,1);}';
+  /* ---- Mode toggle ---- */
+  mPoints.onclick = function() {
+    drawMode = "points";
+    mPoints.className = "mode-btn active";
+    mLines.className = "mode-btn";
+    scheduleFrame();
+  };
+  mLines.onclick = function() {
+    drawMode = "lines";
+    mLines.className = "mode-btn active";
+    mPoints.className = "mode-btn";
+    scheduleFrame();
+  };
 
-// Shared header: density texture RGBA = (avgR, avgG, avgB, density)
-var fHead = [
-  'precision highp float;',
-  'varying vec2 v_uv;',
-  'uniform sampler2D u_density;',
-  'uniform float u_intensity;',
-  'uniform float u_gridOp;',
-  'uniform vec2 u_texSize;',
-  '',
-  '// Read density and color from texture',
-  '// .rgb = average source color at this density position',
-  '// .a   = normalized density (0-1)',
-  'vec4 readDensity(vec2 uv) {',
-  '  return texture2D(u_density, uv);',
-  '}',
-  ''
-].join('\n');
+  /* ---- Slider wiring ---- */
+  sGamma.oninput = function() {
+    gamma = parseFloat(this.value);
+    vGamma.textContent = gamma.toFixed(2);
+    needRebuild = true;
+    scheduleFrame();
+  };
+  sWeight.oninput = function() {
+    weight = parseFloat(this.value);
+    vWeight.textContent = weight.toFixed(3);
+    scheduleFrame();
+  };
+  sSize.oninput = function() {
+    ptSize = parseFloat(this.value);
+    vSize.textContent = ptSize.toFixed(1);
+    scheduleFrame();
+  };
+  sSubdiv.oninput = function() {
+    subdivLevel = parseInt(this.value);
+    vSubdiv.textContent = subdivLevel.toString();
+    needRebuild = true;
+    scheduleFrame();
+  };
+  sR.oninput = function() { colorR = parseFloat(this.value); scheduleFrame(); };
+  sG.oninput = function() { colorG = parseFloat(this.value); scheduleFrame(); };
+  sB.oninput = function() { colorB = parseFloat(this.value); scheduleFrame(); };
 
-// Mode 0: Classic
-var frag0 = fHead + [
-  'void main(){',
-  '  vec4 dc = readDensity(v_uv);',
-  '  float d = dc.a * u_intensity;',
-  '  d = d / (d + 0.25);',
-  '  vec3 col = dc.rgb * d;',
-  '',
-  '  if(u_gridOp > 0.001){',
-  '    vec2 px = 1.0 / u_texSize;',
-  '    float gx = smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.4;',
-  '    float gy = smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.4;',
-  '    col += vec3(gx+gy)*vec3(0.3,0.35,0.4);',
-  '  }',
-  '  gl_FragColor = vec4(col, 1.0);',
-  '}'
-].join('\n');
-
-// Mode 1: Radiative Transfer — density as light-emitting medium
-// Self-emission + absorption: dense regions glow, light fades through dense areas
-var frag1 = fHead + [
-  'uniform float u_emission;',
-  'uniform float u_absorption;',
-  '',
-  'void main(){',
-  '  vec2 px = 1.0 / u_texSize;',
-  '  vec4 dc = readDensity(v_uv);',
-  '  float d = dc.a;',
-  '  vec3 srcCol = dc.rgb;',
-  '',
-  '  // Ray march vertically through the density field (simulating looking through medium)',
-  '  // Sample a vertical column of neighbors to simulate optical depth',
-  '  vec3 accumulated = vec3(0.0);',
-  '  float transmittance = 1.0;',
-  '  int steps = 16;',
-  '',
-  '  for(int i = -8; i <= 8; i++){',
-  '    vec2 sampleUV = v_uv + vec2(0.0, float(i) * px.y * 2.0);',
-  '    if(sampleUV.y < 0.0 || sampleUV.y > 1.0) continue;',
-  '    vec4 sdc = readDensity(sampleUV);',
-  '    float sd = sdc.a;',
-  '',
-  '    // Absorption: dense regions block light',
-  '    float tau = sd * u_absorption * 0.3;',
-  '    transmittance *= exp(-tau);',
-  '',
-  '    // Emission: dense regions emit light',
-  '    vec3 emission = sdc.rgb * sd * sd * u_emission;',
-  '    accumulated += emission * transmittance;',
-  '  }',
-  '',
-  '  // Also add horizontal scattering',
-  '  for(int i = -4; i <= 4; i++){',
-  '    vec2 sampleUV = v_uv + vec2(float(i) * px.x * 3.0, 0.0);',
-  '    if(sampleUV.x < 0.0 || sampleUV.x > 1.0) continue;',
-  '    vec4 sdc = readDensity(sampleUV);',
-  '    float sd = sdc.a;',
-  '    accumulated += sdc.rgb * sd * u_emission * 0.15 * transmittance;',
-  '  }',
-  '',
-  '  // Direct emission from this pixel',
-  '  accumulated += srcCol * d * d * u_emission * u_intensity * 2.0;',
-  '',
-  '  // Tone map',
-  '  accumulated = accumulated / (accumulated + vec3(0.4));',
-  '  accumulated *= u_intensity;',
-  '',
-  '  vec3 col = accumulated;',
-  '',
-  '  if(u_gridOp>0.001){',
-  '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
-  '         +smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.3;',
-  '    col+=vec3(g)*vec3(0.3,0.35,0.4);',
-  '  }',
-  '  gl_FragColor = vec4(col, 1.0);',
-  '}'
-].join('\n');
-
-// Mode 2: Caustics — density as refracting surface, light concentration patterns
-// Density gradient deflects light rays, creating bright concentration lines
-var frag2 = fHead + [
-  'uniform float u_refraction;',
-  'uniform float u_causticSharp;',
-  '',
-  'void main(){',
-  '  vec2 px = 1.0 / u_texSize;',
-  '  vec4 dc = readDensity(v_uv);',
-  '  float d = dc.a;',
-  '',
-  '  // Compute density gradient (acts as surface normal of refracting medium)',
-  '  float dR = readDensity(v_uv+vec2(px.x,0)).a;',
-  '  float dL = readDensity(v_uv-vec2(px.x,0)).a;',
-  '  float dU = readDensity(v_uv-vec2(0,px.y)).a;',
-  '  float dD = readDensity(v_uv+vec2(0,px.y)).a;',
-  '  vec2 grad = vec2(dR-dL, dD-dU) * 0.5;',
-  '',
-  '  // Refracted UV: where does the light hitting this point come from?',
-  '  vec2 refractedUV = v_uv - grad * u_refraction;',
-  '  refractedUV = clamp(refractedUV, vec2(0.0), vec2(1.0));',
-  '',
-  '  // Sample density at refracted position',
-  '  vec4 rdc = readDensity(refractedUV);',
-  '',
-  '  // Caustic intensity: light concentrates where Jacobian determinant is high',
-  '  // Approximate via second derivatives (curvature of density field)',
-  '  float d2x = dR + dL - 2.0 * d;',
-  '  float d2y = dU + dD - 2.0 * d;',
-  '  float dxy = (readDensity(v_uv+vec2(px.x,px.y)).a',
-  '             + readDensity(v_uv-vec2(px.x,px.y)).a',
-  '             - readDensity(v_uv+vec2(px.x,-px.y)).a',
-  '             - readDensity(v_uv-vec2(px.x,-px.y)).a) * 0.25;',
-  '',
-  '  // Jacobian-based caustic: where curvature focuses light',
-  '  float laplacian = abs(d2x + d2y);',
-  '  float det = abs(d2x * d2y - dxy * dxy);',
-  '  float caustic = laplacian * u_refraction * u_causticSharp;',
-  '  caustic = pow(caustic, 1.5);',
-  '  caustic = min(caustic, 5.0);',
-  '',
-  '  // Color: refracted source color modulated by caustic brightness',
-  '  vec3 col = rdc.rgb * (rdc.a + caustic) * u_intensity;',
-  '',
-  '  // Add gradient-magnitude edge glow',
-  '  float gradMag = length(grad);',
-  '  col += dc.rgb * gradMag * u_intensity * 3.0;',
-  '',
-  '  // Tone map',
-  '  col = col / (col + vec3(0.35));',
-  '',
-  '  if(u_gridOp>0.001){',
-  '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
-  '         +smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.3;',
-  '    col+=vec3(g)*vec3(0.3,0.35,0.4);',
-  '  }',
-  '  gl_FragColor = vec4(col, 1.0);',
-  '}'
-].join('\n');
-
-// ===================== GL SETUP =====================
-
-function initGL() {
-  glCanvas = document.getElementById('gl');
-  scopeArea = document.getElementById('scopeArea');
-  glWrap = document.getElementById('glWrap');
-  scaleCanvas = document.getElementById('scaleCanvas');
-  scaleCtx = scaleCanvas.getContext('2d');
-
-  gl = glCanvas.getContext('webgl', {
-    alpha:false, antialias:false, preserveDrawingBuffer:true, premultipliedAlpha:false
-  });
-  if (!gl) { alert('WebGL required'); return; }
-
-  gl.getExtension('OES_texture_float');
-  gl.getExtension('OES_texture_float_linear');
-
-  quadBuf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
-
-  programs[0] = mkProg(vsrc, frag0);
-  programs[1] = mkProg(vsrc, frag1);
-  programs[2] = mkProg(vsrc, frag2);
-
-  fitCanvas();
-  window.addEventListener('resize', function(){ fitCanvas(); if(srcLum) rebuildAndRender(); else render(); drawScale(); });
-  setupIO();
-  updateVis();
-  render();
-  drawScale();
-}
-
-function mkShader(type, src) {
-  var s = gl.createShader(type);
-  gl.shaderSource(s, src);
-  gl.compileShader(s);
-  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-    console.error(gl.getShaderInfoLog(s));
-    return null;
-  }
-  return s;
-}
-
-function mkProg(vs, fs) {
-  var v = mkShader(gl.VERTEX_SHADER, vs);
-  var f = mkShader(gl.FRAGMENT_SHADER, fs);
-  if (!v || !f) return null;
-  var p = gl.createProgram();
-  gl.attachShader(p, v);
-  gl.attachShader(p, f);
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-    console.error(gl.getProgramInfoLog(p));
-    return null;
-  }
-  return p;
-}
-
-function fitCanvas() {
-  var rect = glWrap.getBoundingClientRect();
-  var w = Math.round(rect.width);
-  var h = Math.round(rect.height);
-  var dpr = window.devicePixelRatio || 1;
-  glCanvas.width = Math.round(w * dpr);
-  glCanvas.height = Math.round(h * dpr);
-
-  // Scale canvas covers entire scope area
-  var sr = scopeArea.getBoundingClientRect();
-  scaleCanvas.width = Math.round(sr.width * dpr);
-  scaleCanvas.height = Math.round(sr.height * dpr);
-  scaleCanvas.style.width = sr.width + 'px';
-  scaleCanvas.style.height = sr.height + 'px';
-}
-
-// ===================== DENSITY MAP (CPU) =====================
-
-function extractSource(img) {
-  srcW = img.naturalWidth || img.width;
-  srcH = img.naturalHeight || img.height;
-
-  var tc = document.createElement('canvas');
-  tc.width = srcW; tc.height = srcH;
-  var tctx = tc.getContext('2d');
-  tctx.drawImage(img, 0, 0);
-  var id = tctx.getImageData(0, 0, srcW, srcH);
-  srcPixels = id.data;
-
-  var n = srcW * srcH;
-  srcLum = new Float32Array(n);
-  srcR = new Float32Array(n);
-  srcG_ = new Float32Array(n);
-  srcB_ = new Float32Array(n);
-  for (var i = 0; i < n; i++) {
-    var r = srcPixels[i*4] / 255.0;
-    var g = srcPixels[i*4+1] / 255.0;
-    var b = srcPixels[i*4+2] / 255.0;
-    srcR[i] = r;
-    srcG_[i] = g;
-    srcB_[i] = b;
-    srcLum[i] = 0.2126*r + 0.7152*g + 0.0722*b;
-  }
-
-  document.getElementById('srcPrev').src = tc.toDataURL();
-}
-
-function buildDensity() {
-  if (!srcLum) return;
-
-  var gain = P.gain;
-  var gamma = P.gamma;
-  var spread = P.spread;
-
-  densityW = glCanvas.width;
-  densityH = glCanvas.height;
-
-  // Limit for performance (M3 can handle 4096 easily)
-  var maxPreviewDim = 4096;
-  if (densityW > maxPreviewDim) {
-    var s = maxPreviewDim / densityW;
-    densityW = maxPreviewDim;
-    densityH = Math.round(densityH * s);
-  }
-  if (densityH > maxPreviewDim) {
-    var s = maxPreviewDim / densityH;
-    densityH = maxPreviewDim;
-    densityW = Math.round(densityW * s);
-  }
-
-  // Accumulation height: x8 for anti-banding
-  var AH = densityH * 8;
-  // 4 channels: R, G, B, total density
-  var accumR = new Float32Array(densityW * AH);
-  var accumG = new Float32Array(densityW * AH);
-  var accumB = new Float32Array(densityW * AH);
-  var accumD = new Float32Array(densityW * AH);
-
-  // Gaussian kernel
-  var sigma = spread * (AH / densityH);
-  var kRad = Math.min(Math.ceil(sigma * 3), 20);
-  var kern = new Float32Array(kRad * 2 + 1);
-  var kSum = 0;
-  for (var k = -kRad; k <= kRad; k++) {
-    var w = Math.exp(-(k*k) / (2*sigma*sigma));
-    kern[k + kRad] = w;
-    kSum += w;
-  }
-  for (var k = 0; k < kern.length; k++) kern[k] /= kSum;
-
-  var colScale = densityW / srcW;
-
-  for (var sx = 0; sx < srcW; sx++) {
-    var ox0 = Math.floor(sx * colScale);
-    var ox1 = Math.ceil((sx + 1) * colScale);
-    if (ox1 > densityW) ox1 = densityW;
-
-    for (var sy = 0; sy < srcH; sy++) {
-      var idx = sy * srcW + sx;
-      var lum = srcLum[idx] * gain;
-      if (lum > 1.0) lum = 1.0;
-      lum = Math.pow(lum, gamma);
-
-      // Source pixel color
-      var pr = srcR[idx];
-      var pg = srcG_[idx];
-      var pb = srcB_[idx];
-
-      // HIGH luminance = TOP of scope (low Y value)
-      var mappedY = lum * (AH - 1);
-      var baseY = Math.round(mappedY);
-
-      for (var ox = ox0; ox < ox1; ox++) {
-        var base = ox * AH;
-        for (var k = 0; k < kern.length; k++) {
-          var ky = baseY + k - kRad;
-          if (ky >= 0 && ky < AH) {
-            var kv = kern[k];
-            accumR[base + ky] += pr * kv;
-            accumG[base + ky] += pg * kv;
-            accumB[base + ky] += pb * kv;
-            accumD[base + ky] += kv;
-          }
-        }
+  function scheduleFrame() {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(function() {
+      rafId = null;
+      if (!sourceData) return;
+      if (needRebuild) {
+        needRebuild = false;
+        buildVertices();
       }
-    }
+      render();
+    });
   }
 
-  // Downsample AH -> densityH, store as RGBA
-  var texData = new Float32Array(densityW * densityH * 4);
-  var binH = AH / densityH;
-
-  // Find max density for normalization
-  var maxD = 0;
-
-  for (var ox = 0; ox < densityW; ox++) {
-    var aBase = ox * AH;
-    for (var oy = 0; oy < densityH; oy++) {
-      var y0 = oy * binH;
-      var y1 = y0 + binH;
-      var iy0 = Math.floor(y0);
-      var iy1 = Math.ceil(y1);
-      if (iy1 > AH) iy1 = AH;
-      var sR = 0, sG = 0, sB = 0, sD = 0;
-      for (var ay = iy0; ay < iy1; ay++) {
-        var lo = ay < y0 ? y0 : ay;
-        var hi = (ay+1) > y1 ? y1 : (ay+1);
-        if (hi > lo) {
-          var w = hi - lo;
-          sR += accumR[aBase + ay] * w;
-          sG += accumG[aBase + ay] * w;
-          sB += accumB[aBase + ay] * w;
-          sD += accumD[aBase + ay] * w;
-        }
-      }
-      sR /= binH; sG /= binH; sB /= binH; sD /= binH;
-
-      var pi = (oy * densityW + ox) * 4;
-      texData[pi]   = sR;
-      texData[pi+1] = sG;
-      texData[pi+2] = sB;
-      texData[pi+3] = sD;
-
-      if (sD > maxD) maxD = sD;
-    }
-  }
-
-  // Normalize: scale so max density = 1, color = average color at that density
-  if (maxD > 0) {
-    var inv = 1.0 / maxD;
-    for (var i = 0; i < densityW * densityH; i++) {
-      var pi = i * 4;
-      var d = texData[pi+3];
-      if (d > 0.0001) {
-        // Average color = accumulated color / density count
-        texData[pi]   = texData[pi]   / d;  // avg R
-        texData[pi+1] = texData[pi+1] / d;  // avg G
-        texData[pi+2] = texData[pi+2] / d;  // avg B
-      }
-      texData[pi+3] = d * inv;  // normalized density
-    }
-  }
-
-  uploadDensity(texData);
-}
-
-function uploadDensity(texData) {
-  if (!densityTex) densityTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, densityTex);
-
-  var useFloat = false;
-  // Try float texture with proper GL error check
-  gl.getError(); // clear previous errors
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.FLOAT, texData);
-  if (gl.getError() === gl.NO_ERROR) {
-    useFloat = true;
-  } else {
-    // Fallback: encode to UNSIGNED_BYTE (loses precision but works everywhere)
-    var bytes = new Uint8Array(densityW * densityH * 4);
-    for (var i = 0; i < densityW * densityH; i++) {
-      bytes[i*4]   = Math.min(255, Math.round(texData[i*4]   * 255));
-      bytes[i*4+1] = Math.min(255, Math.round(texData[i*4+1] * 255));
-      bytes[i*4+2] = Math.min(255, Math.round(texData[i*4+2] * 255));
-      bytes[i*4+3] = Math.min(255, Math.round(texData[i*4+3] * 255));
-    }
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
-  }
-
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  document.getElementById('stB').textContent =
-    'DENSITY: ' + densityW + 'x' + densityH +
-    ' | TEX: ' + (useFloat ? 'FLOAT32' : 'UINT8') +
-    ' | DPR: ' + (window.devicePixelRatio || 1);
-}
-
-// ===================== RENDER =====================
-
-function render() {
-  var w = glCanvas.width;
-  var h = glCanvas.height;
-  gl.viewport(0, 0, w, h);
-  gl.clearColor(0,0,0,1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  if (!densityTex || !srcLum) return;
-
-  var prog = programs[curMode];
-  if (!prog) return;
-
-  gl.useProgram(prog);
-
-  var aPos = gl.getAttribLocation(prog, 'a_pos');
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-  gl.enableVertexAttribArray(aPos);
-  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, densityTex);
-  gl.uniform1i(gl.getUniformLocation(prog, 'u_density'), 0);
-
-  gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), P.intensity);
-  gl.uniform1f(gl.getUniformLocation(prog, 'u_gridOp'), P.gridOp);
-  gl.uniform2f(gl.getUniformLocation(prog, 'u_texSize'), densityW, densityH);
-
-  if (curMode === 1) {
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_emission'), P.emission);
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_absorption'), P.absorption);
-  }
-  if (curMode === 2) {
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_refraction'), P.refraction);
-    gl.uniform1f(gl.getUniformLocation(prog, 'u_causticSharp'), P.causticSharp);
-  }
-
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-}
-
-function rebuildAndRender() {
-  buildDensity();
-  render();
-  drawScale();
-}
-
-// ===================== SCALE DRAWING =====================
-
-function drawScale() {
-  var dpr = window.devicePixelRatio || 1;
-  var cw = scaleCanvas.width;
-  var ch = scaleCanvas.height;
-  var ctx = scaleCtx;
-  ctx.clearRect(0, 0, cw, ch);
-
-  // Get GL canvas position relative to scope area
-  var scopeRect = scopeArea.getBoundingClientRect();
-  var glRect = glWrap.getBoundingClientRect();
-  var ox = (glRect.left - scopeRect.left) * dpr;
-  var oy = (glRect.top - scopeRect.top) * dpr;
-  var gw = glRect.width * dpr;
-  var gh = glRect.height * dpr;
-
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = dpr;
-  ctx.fillStyle = '#333';
-  ctx.font = (8 * dpr) + 'px Courier New';
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'right';
-
-  // Y axis: 0 (bottom) to 1023 (top) - 10-bit luminance scale
-  var ySteps = 10;
-  for (var i = 0; i <= ySteps; i++) {
-    var frac = i / ySteps;
-    var y = oy + gh - frac * gh;
-    var label = Math.round(frac * 1023);
-
-    // Tick mark
-    ctx.beginPath();
-    ctx.moveTo(ox - 4 * dpr, y);
-    ctx.lineTo(ox, y);
-    ctx.stroke();
-
-    // Label
-    ctx.fillText(label, ox - 6 * dpr, y);
-
-    // Grid line (subtle)
-    if (i > 0 && i < ySteps) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.beginPath();
-      ctx.moveTo(ox, y);
-      ctx.lineTo(ox + gw, y);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  // X axis: column position 0% to 100%
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  var xSteps = 10;
-  for (var i = 0; i <= xSteps; i++) {
-    var frac = i / xSteps;
-    var x = ox + frac * gw;
-    var label = Math.round(frac * 100);
-
-    ctx.beginPath();
-    ctx.moveTo(x, oy + gh);
-    ctx.lineTo(x, oy + gh + 4 * dpr);
-    ctx.stroke();
-
-    ctx.fillText(label, x, oy + gh + 5 * dpr);
-
-    if (i > 0 && i < xSteps) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.beginPath();
-      ctx.moveTo(x, oy);
-      ctx.lineTo(x, oy + gh);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  // Border
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.strokeRect(ox, oy, gw, gh);
-
-  // Y axis label
-  ctx.save();
-  ctx.fillStyle = '#222';
-  ctx.font = (7 * dpr) + 'px Courier New';
-  ctx.translate(8 * dpr, oy + gh / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('LUMINANCE LEVEL', 0, 0);
-  ctx.restore();
-
-  // X axis label
-  ctx.fillStyle = '#222';
-  ctx.font = (7 * dpr) + 'px Courier New';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('COLUMN %', ox + gw / 2, oy + gh + 16 * dpr);
-}
-
-// ===================== HI-RES =====================
-
-function renderHi() {
-  if (!srcLum) return;
-
-  var scale = renderScale;
-  var outW = Math.min(srcW * scale, 8192);
-  var outH = Math.min(srcH * scale, 8192);
-
-  var maxSize = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
-  outW = Math.min(outW, maxSize[0]);
-  outH = Math.min(outH, maxSize[1]);
-
-  // Build density at hi-res
-  var oldDW = densityW, oldDH = densityH;
-  densityW = outW;
-  densityH = outH;
-
-  document.getElementById('hI').textContent = 'RENDERING ' + outW + 'x' + outH + '...';
-
-  setTimeout(function() {
-    buildDensity();
-
-    var oldW = glCanvas.width;
-    var oldH = glCanvas.height;
-    glCanvas.width = outW;
-    glCanvas.height = outH;
-    render();
-
-    var dataURL = glCanvas.toDataURL('image/png');
-
-    // Restore
-    glCanvas.width = oldW;
-    glCanvas.height = oldH;
-    densityW = oldDW;
-    densityH = oldDH;
-    buildDensity();
-    render();
-
-    document.getElementById('hiImg').src = dataURL;
-    document.getElementById('hiOv').classList.add('show');
-    window._hiData = dataURL;
-    document.getElementById('hI').textContent = 'HI-RES: ' + outW + 'x' + outH;
-  }, 50);
-}
-
-function closeHi() { document.getElementById('hiOv').classList.remove('show'); }
-
-// ===================== IMAGE =====================
-
-function processImg(img) {
-  srcImg = img;
-  extractSource(img);
-  fitCanvas();
-  rebuildAndRender();
-  document.getElementById('drOv').classList.add('hidden');
-  document.getElementById('hI').textContent = srcW + 'x' + srcH;
-}
-
-function loadImg() { document.getElementById('fIn').click(); }
-
-function setupIO() {
-  document.getElementById('fIn').addEventListener('change', function(e) {
-    var f = e.target.files[0]; if (!f) return;
-    var r = new FileReader();
-    r.onload = function(ev) {
+  /* ---- Photo ---- */
+  btnPhoto.onclick = function() { fileInput.click(); };
+  fileInput.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
       var img = new Image();
-      img.onload = function() { processImg(img); };
+      img.onload = function() { loadSource(img); };
       img.src = ev.target.result;
     };
-    r.readAsDataURL(f);
-  });
-  document.getElementById('drOv').addEventListener('click', function() { loadImg(); });
-  document.getElementById('main').addEventListener('dragover', function(e) { e.preventDefault(); });
-  document.getElementById('main').addEventListener('drop', function(e) {
-    e.preventDefault();
-    var f = e.dataTransfer.files[0];
-    if (!f || !f.type.match('image.*')) return;
-    var r = new FileReader();
-    r.onload = function(ev) {
-      var img = new Image();
-      img.onload = function() { processImg(img); };
-      img.src = ev.target.result;
-    };
-    r.readAsDataURL(f);
-  });
-  document.getElementById('hiOv').addEventListener('click', function(e) {
-    if (e.target === this || e.target === document.getElementById('hiImg')) closeHi();
-  });
-}
+    reader.readAsDataURL(file);
+  };
 
-// ===================== UI =====================
+  function loadSource(img) {
+    sourceW = img.naturalWidth;
+    sourceH = img.naturalHeight;
+    var oc = document.createElement("canvas");
+    oc.width = sourceW; oc.height = sourceH;
+    var ctx = oc.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    sourceData = ctx.getImageData(0, 0, sourceW, sourceH);
+    srcPreview.src = oc.toDataURL();
+    srcPreview.style.display = "block";
+    emptyState.style.display = "none";
+    imgInfo.textContent = sourceW + "\u00d7" + sourceH;
+    needRebuild = true;
+    setupCanvas();
+    buildVertices();
+    render();
+    drawGrid();
+  }
 
-function setM(m) {
-  curMode = m;
-  for (var i = 0; i < 3; i++) document.getElementById('m'+i).classList.remove('a');
-  document.getElementById('m'+m).classList.add('a');
-  updateVis();
-  render();
-}
+  /* ---- Canvas sizing ---- */
+  function setupCanvas() {
+    if (!sourceData) return;
+    if (!gl && !initGL()) return;
+    var dpr = window.devicePixelRatio || 1;
+    var wW = canvasWrap.clientWidth;
+    var wH = canvasWrap.clientHeight;
+    var srcA = sourceW / sourceH;
+    var wA = wW / wH;
+    if (srcA > wA) {
+      dispW = wW;
+      dispH = Math.round(wW / srcA);
+    } else {
+      dispH = wH;
+      dispW = Math.round(wH * srcA);
+    }
+    var cW = Math.round(dispW * dpr);
+    var cH = Math.round(dispH * dpr);
+    glCanvas.width = cW;
+    glCanvas.height = cH;
+    glCanvas.style.width = dispW + "px";
+    glCanvas.style.height = dispH + "px";
+    gl.viewport(0, 0, cW, cH);
+  }
 
-function updateVis() {
-  document.getElementById('rAb').style.display = curMode===1?'':'none';
-  document.getElementById('rEm').style.display = curMode===1?'':'none';
-  document.getElementById('rRf').style.display = curMode===2?'':'none';
-  document.getElementById('rFc').style.display = curMode===2?'':'none';
-}
+  /* ---- WebGL init ---- */
+  function initGL() {
+    gl = glCanvas.getContext("webgl", {
+      alpha: false,
+      antialias: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: true
+    });
+    if (!gl) { alert("WebGL unavailable"); return false; }
 
-function onP(rebuild) {
-  P.gain = parseFloat(document.getElementById('sG').value);
-  P.gamma = parseFloat(document.getElementById('sGm').value);
-  P.spread = parseFloat(document.getElementById('sSp').value);
-  P.intensity = parseFloat(document.getElementById('sIn').value);
-  P.absorption = parseFloat(document.getElementById('sAb').value);
-  P.emission = parseFloat(document.getElementById('sEm').value);
-  P.refraction = parseFloat(document.getElementById('sRf').value);
-  P.causticSharp = parseFloat(document.getElementById('sFc').value);
-  P.gridOp = parseFloat(document.getElementById('sGr').value);
+    /* --- Points program --- */
+    var vsP = [
+      "attribute vec2 a_pos;",
+      "attribute vec3 a_rgb;",
+      "uniform float u_ps;",
+      "uniform float u_w;",
+      "uniform vec3 u_cm;",
+      "varying vec4 v_col;",
+      "void main() {",
+      "  gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);",
+      "  gl_PointSize = u_ps;",
+      "  v_col = vec4(a_rgb * u_cm, u_w);",
+      "}"
+    ].join("\n");
 
-  document.getElementById('vG').textContent = P.gain.toFixed(2);
-  document.getElementById('vGm').textContent = P.gamma.toFixed(2);
-  document.getElementById('vSp').textContent = P.spread.toFixed(1);
-  document.getElementById('vIn').textContent = P.intensity.toFixed(2);
-  document.getElementById('vAb').textContent = P.absorption.toFixed(2);
-  document.getElementById('vEm').textContent = P.emission.toFixed(2);
-  document.getElementById('vRf').textContent = P.refraction.toFixed(2);
-  document.getElementById('vFc').textContent = P.causticSharp.toFixed(2);
-  document.getElementById('vGr').textContent = P.gridOp.toFixed(2);
+    var fsP = [
+      "precision mediump float;",
+      "varying vec4 v_col;",
+      "void main() { gl_FragColor = v_col; }"
+    ].join("\n");
 
-  if (rebuild && srcLum) rebuildAndRender();
-  else render();
-}
+    /* --- Lines program --- */
+    var vsL = [
+      "attribute vec2 a_pos;",
+      "attribute vec3 a_rgb;",
+      "uniform float u_w;",
+      "uniform vec3 u_cm;",
+      "varying vec4 v_col;",
+      "void main() {",
+      "  gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);",
+      "  v_col = vec4(a_rgb * u_cm, u_w);",
+      "}"
+    ].join("\n");
 
-function onRs() {
-  renderScale = parseInt(document.getElementById('sRs').value);
-  document.getElementById('vRs').textContent = renderScale + 'x';
-}
+    var fsL = fsP; /* same fragment shader */
 
-function togPnl() {
-  document.getElementById('pnl').classList.toggle('collapsed');
-  document.getElementById('togB').classList.toggle('shifted');
-  document.getElementById('scopeArea').classList.toggle('full');
-  setTimeout(function(){ fitCanvas(); if(srcLum) rebuildAndRender(); drawScale(); }, 250);
-}
+    function mk(type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+    function mkProg(vSrc, fSrc) {
+      var p = gl.createProgram();
+      gl.attachShader(p, mk(gl.VERTEX_SHADER, vSrc));
+      gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fSrc));
+      gl.linkProgram(p);
+      return p;
+    }
 
-function togSrc() {
-  showingSrc = !showingSrc;
-  var el = document.getElementById('srcPrev');
-  if (showingSrc && srcImg) el.classList.add('show');
-  else { el.classList.remove('show'); showingSrc = false; }
-}
+    progPoints = mkProg(vsP, fsP);
+    progLines  = mkProg(vsL, fsL);
 
-function savePng() {
-  var url = window._hiData || glCanvas.toDataURL('image/png');
-  var a = document.createElement('a');
-  a.href = url; a.download = 'density-field-' + Date.now() + '.png'; a.click();
-}
+    gl.useProgram(progPoints);
+    uPS_p = gl.getUniformLocation(progPoints, "u_ps");
+    uW_p  = gl.getUniformLocation(progPoints, "u_w");
+    uC_p  = gl.getUniformLocation(progPoints, "u_cm");
 
-window.addEventListener('DOMContentLoaded', initGL);
+    gl.useProgram(progLines);
+    uW_l = gl.getUniformLocation(progLines, "u_w");
+    uC_l = gl.getUniformLocation(progLines, "u_cm");
+
+    pointsBuf = gl.createBuffer();
+    linesBuf  = gl.createBuffer();
+    return true;
+  }
+
+  /* ---- Helper: get luminance at (row, col) with boundary clamp ---- */
+  function getLum(px, row, col) {
+    if (row < 0) row = 0;
+    if (row >= sourceH) row = sourceH - 1;
+    if (col < 0) col = 0;
+    if (col >= sourceW) col = sourceW - 1;
+    var pi = (row * sourceW + col) * 4;
+    var r = px[pi] / 255.0;
+    var g = px[pi + 1] / 255.0;
+    var b = px[pi + 2] / 255.0;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  function getRGB(px, row, col) {
+    if (row < 0) row = 0;
+    if (row >= sourceH) row = sourceH - 1;
+    if (col < 0) col = 0;
+    if (col >= sourceW) col = sourceW - 1;
+    var pi = (row * sourceW + col) * 4;
+    return [px[pi] / 255.0, px[pi + 1] / 255.0, px[pi + 2] / 255.0];
+  }
+
+  /* ---- Catmull-Rom interpolation ---- */
+  function catmullRom(p0, p1, p2, p3, t) {
+    var t2 = t * t;
+    var t3 = t2 * t;
+    return 0.5 * (
+      (2.0 * p1) +
+      (-p0 + p2) * t +
+      (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
+      (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
+    );
+  }
+
+  /* ---- Build vertices ---- */
+  function buildVertices() {
+    if (!sourceData || !gl) return;
+    var px = sourceData.data;
+    var invG = 1.0 / gamma;
+    var sub = subdivLevel; /* 1=original rows only, 2=1 interp between each, etc */
+
+    /* Total rows after subdivision */
+    var totalRows = (sourceH - 1) * sub + 1;
+
+    /* --- POINTS buffer --- */
+    var pArr = new Float32Array(totalRows * sourceW * 5);
+    var pIdx = 0;
+
+    for (var ri = 0; ri < totalRows; ri++) {
+      var srcRowF = ri / sub;  /* fractional source row */
+      var srcRow0 = Math.floor(srcRowF);
+      var frac = srcRowF - srcRow0;
+
+      for (var col = 0; col < sourceW; col++) {
+        var lum, r, g, b;
+
+        if (frac < 0.001) {
+          /* Exact source row */
+          lum = getLum(px, srcRow0, col);
+          var rgb = getRGB(px, srcRow0, col);
+          r = rgb[0]; g = rgb[1]; b = rgb[2];
+        } else {
+          /* Catmull-Rom interpolation across rows */
+          var r0 = srcRow0 - 1;
+          var r1 = srcRow0;
+          var r2 = srcRow0 + 1;
+          var r3 = srcRow0 + 2;
+
+          var l0 = getLum(px, r0, col);
+          var l1 = getLum(px, r1, col);
+          var l2 = getLum(px, r2, col);
+          var l3 = getLum(px, r3, col);
+          lum = catmullRom(l0, l1, l2, l3, frac);
+          if (lum < 0) lum = 0;
+          if (lum > 1) lum = 1;
+
+          /* Interpolate color too */
+          var c0 = getRGB(px, r0, col);
+          var c1 = getRGB(px, r1, col);
+          var c2 = getRGB(px, r2, col);
+          var c3 = getRGB(px, r3, col);
+          r = catmullRom(c0[0], c1[0], c2[0], c3[0], frac);
+          g = catmullRom(c0[1], c1[1], c2[1], c3[1], frac);
+          b = catmullRom(c0[2], c1[2], c2[2], c3[2], frac);
+          if (r < 0) r = 0; if (r > 1) r = 1;
+          if (g < 0) g = 0; if (g > 1) g = 1;
+          if (b < 0) b = 0; if (b > 1) b = 1;
+        }
+
+        var lumG = Math.pow(lum, invG);
+        pArr[pIdx]     = (col + 0.5) / sourceW;
+        pArr[pIdx + 1] = lumG;
+        pArr[pIdx + 2] = r;
+        pArr[pIdx + 3] = g;
+        pArr[pIdx + 4] = b;
+        pIdx += 5;
+      }
+    }
+    pointsCount = totalRows * sourceW;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, pArr, gl.STATIC_DRAW);
+
+    /* --- LINES buffer: connect adjacent columns within each row --- */
+    /* Each line segment = 2 vertices, each vertex = 5 floats */
+    var lArr = new Float32Array(totalRows * (sourceW - 1) * 2 * 5);
+    var lIdx = 0;
+
+    for (var ri2 = 0; ri2 < totalRows; ri2++) {
+      var base = ri2 * sourceW * 5;
+      for (var c = 0; c < sourceW - 1; c++) {
+        var off0 = base + c * 5;
+        var off1 = base + (c + 1) * 5;
+        /* vertex 0 */
+        lArr[lIdx]     = pArr[off0];
+        lArr[lIdx + 1] = pArr[off0 + 1];
+        lArr[lIdx + 2] = pArr[off0 + 2];
+        lArr[lIdx + 3] = pArr[off0 + 3];
+        lArr[lIdx + 4] = pArr[off0 + 4];
+        lIdx += 5;
+        /* vertex 1 */
+        lArr[lIdx]     = pArr[off1];
+        lArr[lIdx + 1] = pArr[off1 + 1];
+        lArr[lIdx + 2] = pArr[off1 + 2];
+        lArr[lIdx + 3] = pArr[off1 + 3];
+        lArr[lIdx + 4] = pArr[off1 + 4];
+        lIdx += 5;
+      }
+    }
+    linesCount = totalRows * (sourceW - 1) * 2;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, linesBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, lArr, gl.STATIC_DRAW);
+  }
+
+  /* ---- Render ---- */
+  function render() {
+    if (!gl || pointsCount === 0) return;
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+    var dpr = window.devicePixelRatio || 1;
+
+    if (drawMode === "points") {
+      gl.useProgram(progPoints);
+      gl.uniform1f(uPS_p, ptSize * dpr);
+      gl.uniform1f(uW_p, weight);
+      gl.uniform3f(uC_p, colorR, colorG, colorB);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuf);
+      var aP = gl.getAttribLocation(progPoints, "a_pos");
+      var aC = gl.getAttribLocation(progPoints, "a_rgb");
+      gl.enableVertexAttribArray(aP);
+      gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(aC);
+      gl.vertexAttribPointer(aC, 3, gl.FLOAT, false, 20, 8);
+      gl.drawArrays(gl.POINTS, 0, pointsCount);
+      gl.disableVertexAttribArray(aP);
+      gl.disableVertexAttribArray(aC);
+
+    } else {
+      /* LINES mode */
+      gl.useProgram(progLines);
+      gl.uniform1f(uW_l, weight);
+      gl.uniform3f(uC_l, colorR, colorG, colorB);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, linesBuf);
+      var aP2 = gl.getAttribLocation(progLines, "a_pos");
+      var aC2 = gl.getAttribLocation(progLines, "a_rgb");
+      gl.enableVertexAttribArray(aP2);
+      gl.vertexAttribPointer(aP2, 2, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(aC2);
+      gl.vertexAttribPointer(aC2, 3, gl.FLOAT, false, 20, 8);
+      gl.drawArrays(gl.LINES, 0, linesCount);
+      gl.disableVertexAttribArray(aP2);
+      gl.disableVertexAttribArray(aC2);
+    }
+  }
+
+  /* ---- Grid ---- */
+  function drawGrid() {
+    if (!dispW || !dispH) return;
+    var dpr = window.devicePixelRatio || 1;
+    gridCanvas.width = Math.round(dispW * dpr);
+    gridCanvas.height = Math.round(dispH * dpr);
+    gridCanvas.style.width = dispW + "px";
+    gridCanvas.style.height = dispH + "px";
+    gridCanvas.style.position = "absolute";
+    var wr = canvasWrap.getBoundingClientRect();
+    var gr = glCanvas.getBoundingClientRect();
+    gridCanvas.style.left = (gr.left - wr.left) + "px";
+    gridCanvas.style.top = (gr.top - wr.top) + "px";
+
+    var ctx = gridCanvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, dispW, dispH);
+
+    var steps = [0, 128, 256, 384, 512, 640, 768, 896, 1023];
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 0.5;
+    ctx.fillStyle = "rgba(255,255,255,0.10)";
+    ctx.font = "7px 'Courier New', monospace";
+    ctx.textBaseline = "middle";
+    for (var i = 0; i < steps.length; i++) {
+      var v = steps[i];
+      var y = dispH - (v / 1023.0) * dispH;
+      ctx.beginPath();
+      ctx.moveTo(26, y);
+      ctx.lineTo(dispW, y);
+      ctx.stroke();
+      ctx.fillText(v.toString(), 1, y);
+    }
+  }
+
+  /* ---- Save ---- */
+  btnSave.onclick = function() {
+    if (!glCanvas.width || !glCanvas.height || !gl) return;
+
+    /* Force a fresh render */
+    render();
+
+    var w = glCanvas.width, h = glCanvas.height;
+    var buf = new Uint8Array(w * h * 4);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+
+    var ec = document.createElement("canvas");
+    ec.width = w; ec.height = h;
+    var ctx = ec.getContext("2d");
+    var id = ctx.createImageData(w, h);
+    for (var y = 0; y < h; y++) {
+      var s = (h - 1 - y) * w * 4;
+      var d = y * w * 4;
+      for (var x = 0; x < w * 4; x++) { id.data[d + x] = buf[s + x]; }
+    }
+    ctx.putImageData(id, 0, 0);
+
+    /* Try toDataURL fallback if toBlob fails */
+    try {
+      ec.toBlob(function(blob) {
+        if (!blob) {
+          fallbackSave(ec);
+          return;
+        }
+        shareSave(blob);
+      }, "image/png");
+    } catch (e) {
+      fallbackSave(ec);
+    }
+  };
+
+  function shareSave(blob) {
+    if (navigator.share && navigator.canShare) {
+      try {
+        var file = new File([blob], "density-field.png", { type: "image/png" });
+        var sd = { files: [file] };
+        if (navigator.canShare(sd)) {
+          navigator.share(sd).catch(function() { dlBlob(blob); });
+          return;
+        }
+      } catch (e) { /* fall through */ }
+    }
+    dlBlob(blob);
+  }
+
+  function dlBlob(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "density-field.png";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function fallbackSave(canvas) {
+    var dataUrl = canvas.toDataURL("image/png");
+    var a = document.createElement("a");
+    a.href = dataUrl; a.download = "density-field.png";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+  }
+
+  /* ---- Resize ---- */
+  var rT = null;
+  window.onresize = function() {
+    clearTimeout(rT);
+    rT = setTimeout(function() {
+      if (sourceData) {
+        setupCanvas();
+        render();
+        drawGrid();
+      }
+    }, 200);
+  };
+})();
 </script>
 </body>
 </html>
