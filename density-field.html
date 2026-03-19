@@ -3,25 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>DENSITY FIELD v4</title>
+<title>DENSITY FIELD v5b</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#050505;color:#aaa;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
-#header{height:28px;display:flex;align-items:center;padding:0 10px;background:#080808;border-bottom:1px solid #111;flex-shrink:0;justify-content:space-between}
+
+#header{height:26px;display:flex;align-items:center;padding:0 10px;background:#080808;border-bottom:1px solid #111;flex-shrink:0;justify-content:space-between}
 #header .t{font-size:9px;letter-spacing:3px;color:#333}
 #header .t b{color:#666;font-weight:normal}
 #header .info{font-size:8px;color:#282828;letter-spacing:1px}
+
 #main{flex:1;display:flex;position:relative;overflow:hidden}
-#cWrap{position:absolute;top:0;left:0;right:240px;bottom:0;display:flex;align-items:center;justify-content:center;background:#000}
-#cWrap.full{right:0}
-canvas#gl{display:block;background:#000}
+
+/* Scope area: includes margin for scale labels */
+#scopeArea{position:absolute;top:0;left:0;right:240px;bottom:0;background:#050505;overflow:hidden}
+#scopeArea.full{right:0}
+
+/* Scale labels drawn by canvas overlay */
+#scaleCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2}
+
+/* GL canvas inside scope with margins for labels */
+#glWrap{position:absolute;top:20px;left:44px;right:10px;bottom:24px;background:#000}
+canvas#gl{display:block;width:100%;height:100%;background:#000}
 
 /* Source preview */
 #srcPrev{display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:3}
 #srcPrev.show{display:block}
 
 /* Hires */
-#hiOv{display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;background:#000;overflow:auto}
+#hiOv{display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;background:#000}
 #hiOv.show{display:flex;align-items:center;justify-content:center}
 #hiOv img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-out}
 #hiCl{position:fixed;top:6px;right:6px;z-index:21;background:#0a0a0a;border:1px solid #2a2a2a;color:#666;font-family:'Courier New',monospace;font-size:8px;padding:3px 10px;cursor:pointer;letter-spacing:2px}
@@ -38,9 +48,9 @@ canvas#gl{display:block;background:#000}
 #pnl.collapsed{transform:translateX(240px)}
 #togB{position:absolute;top:4px;z-index:6;background:#0a0a0a;border:1px solid #181818;color:#383838;font-family:'Courier New',monospace;font-size:8px;padding:2px 6px;cursor:pointer;letter-spacing:1px;transition:right 0.2s;right:246px}
 #togB.shifted{right:4px}
-.sc{margin-bottom:11px}
+.sc{margin-bottom:10px}
 .lb{font-size:7px;letter-spacing:2.5px;color:#2a2a2a;margin-bottom:5px;text-transform:uppercase;border-bottom:1px solid #111;padding-bottom:3px}
-.mb{display:block;width:100%;background:#090909;border:1px solid #141414;color:#4a4a4a;font-family:'Courier New',monospace;font-size:8px;padding:5px 6px;cursor:pointer;text-align:left;letter-spacing:0.5px;margin-bottom:1px;transition:all 0.1s}
+.mb{display:block;width:100%;background:#090909;border:1px solid #131313;color:#4a4a4a;font-family:'Courier New',monospace;font-size:8px;padding:5px 6px;cursor:pointer;text-align:left;letter-spacing:0.5px;margin-bottom:1px;transition:all 0.1s}
 .mb:hover{border-color:#222;color:#777}
 .mb.a{border-color:#383838;color:#aaa;background:#0e0e0e}
 .mb .d{font-size:6.5px;color:#222;display:block;margin-top:1px}
@@ -51,7 +61,7 @@ canvas#gl{display:block;background:#000}
 .sv{font-size:7px;color:#3a3a3a;font-variant-numeric:tabular-nums}
 input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#141414;outline:none;cursor:pointer}
 input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;height:10px;background:#333;border:none;cursor:pointer}
-.ab{background:#090909;border:1px solid #141414;color:#383838;font-family:'Courier New',monospace;font-size:7px;padding:4px 7px;cursor:pointer;letter-spacing:1.5px;width:100%;margin-bottom:2px;text-align:center;transition:all 0.1s}
+.ab{background:#090909;border:1px solid #131313;color:#383838;font-family:'Courier New',monospace;font-size:7px;padding:4px 7px;cursor:pointer;letter-spacing:1.5px;width:100%;margin-bottom:2px;text-align:center;transition:all 0.1s}
 .ab:hover{border-color:#222;color:#666}
 .ab.hl{border-color:#2a2a2a;color:#777}
 .crow{display:flex;align-items:center;gap:6px;margin-bottom:4px}
@@ -65,12 +75,13 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;heig
 </head>
 <body>
 <div id="header">
-  <div class="t"><b>DENSITY FIELD</b> · v4</div>
+  <div class="t"><b>DENSITY FIELD</b> · v5b</div>
   <div class="info" id="hI"></div>
 </div>
 <div id="main">
-  <div id="cWrap">
-    <canvas id="gl"></canvas>
+  <div id="scopeArea">
+    <div id="glWrap"><canvas id="gl"></canvas></div>
+    <canvas id="scaleCanvas"></canvas>
     <img id="srcPrev" alt="">
   </div>
   <div id="drOv">
@@ -90,23 +101,24 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;heig
     </div>
     <div class="sc">
       <div class="lb">DENSITY</div>
-      <div class="sr"><div class="sh"><span class="sn">GAIN</span><span class="sv" id="vG">1.00</span></div><input type="range" id="sG" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
-      <div class="sr"><div class="sh"><span class="sn">GAMMA</span><span class="sv" id="vGm">1.00</span></div><input type="range" id="sGm" min="0.2" max="3.0" step="0.01" value="1.0" oninput="onP()"></div>
+      <div class="sr"><div class="sh"><span class="sn">GAIN</span><span class="sv" id="vG">1.00</span></div><input type="range" id="sG" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(1)"></div>
+      <div class="sr"><div class="sh"><span class="sn">GAMMA</span><span class="sv" id="vGm">1.00</span></div><input type="range" id="sGm" min="0.2" max="3.0" step="0.01" value="1.0" oninput="onP(1)"></div>
+      <div class="sr"><div class="sh"><span class="sn">SPREAD</span><span class="sv" id="vSp">2.0</span></div><input type="range" id="sSp" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP(1)"></div>
     </div>
     <div class="sc">
       <div class="lb">RENDERING</div>
-      <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div><input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP()"></div>
-      <div class="sr" id="rPs"><div class="sh"><span class="sn">PARTICLE SIZE</span><span class="sv" id="vPs">2.0</span></div><input type="range" id="sPs" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP()"></div>
-      <div class="sr" id="rGl"><div class="sh"><span class="sn">GLOW</span><span class="sv" id="vGl">1.00</span></div><input type="range" id="sGl" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
-      <div class="sr" id="rLd"><div class="sh"><span class="sn">LINE DENSITY</span><span class="sv" id="vLd">1.00</span></div><input type="range" id="sLd" min="0.2" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
+      <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div><input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+      <div class="sr" id="rPs"><div class="sh"><span class="sn">PARTICLE SIZE</span><span class="sv" id="vPs">2.0</span></div><input type="range" id="sPs" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP(0)"></div>
+      <div class="sr" id="rGl"><div class="sh"><span class="sn">GLOW</span><span class="sv" id="vGl">1.00</span></div><input type="range" id="sGl" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+      <div class="sr" id="rLd"><div class="sh"><span class="sn">LINE DENSITY</span><span class="sv" id="vLd">1.00</span></div><input type="range" id="sLd" min="0.2" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
     </div>
     <div class="sc">
       <div class="lb">COLOR</div>
-      <div class="crow"><div class="csw" id="cSw" style="background:#fff"><input type="color" id="cPk" value="#ffffff" oninput="onC(this.value)"></div><span class="sn">GLOW COLOR</span></div>
+      <div class="sr"><div class="sh"><span class="sn">COLOR SOURCE</span><span class="sv">IMAGE</span></div></div>
     </div>
     <div class="sc">
-      <div class="lb">GRID</div>
-      <div class="sr"><div class="sh"><span class="sn">GRID OPACITY</span><span class="sv" id="vGr">0.15</span></div><input type="range" id="sGr" min="0.0" max="0.5" step="0.01" value="0.15" oninput="onP()"></div>
+      <div class="lb">SCALE</div>
+      <div class="sr"><div class="sh"><span class="sn">GRID OPACITY</span><span class="sv" id="vGr">0.20</span></div><input type="range" id="sGr" min="0.0" max="0.6" step="0.01" value="0.2" oninput="onP(0)"></div>
     </div>
     <div class="sc">
       <div class="lb">OUTPUT</div>
@@ -122,16 +134,25 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;heig
 <input type="file" id="fIn" accept="image/*" style="display:none">
 <script>
 // ======================================================
-// DENSITY FIELD v4 — Full GPU
-// Density computed PER-PIXEL in fragment shader
-// No CPU density map, no banding from texture resolution
-// Source image = information only, never drawn directly
+// DENSITY FIELD v5
+// CPU: density map at high resolution (anti-banding)
+// GPU: render from density texture (fast, sharp)
+// Color: generated from density, not from source
+// Scale: proper axis with numbers
 // ======================================================
 
-var glCanvas, gl, cWrap;
-var srcTex = null;
-var srcW = 0, srcH = 0;
+var glCanvas, gl, scopeArea, glWrap, scaleCanvas, scaleCtx;
 var srcImg = null;
+var srcW = 0, srcH = 0;
+var srcPixels = null;
+var srcLum = null;
+var srcR = null;
+var srcG_ = null;
+var srcB_ = null;
+
+var densityTex = null;
+var densityW = 0, densityH = 0;
+
 var curMode = 0;
 var showingSrc = false;
 var renderScale = 2;
@@ -139,214 +160,134 @@ var quadBuf = null;
 var programs = [];
 
 var P = {
-  gain:1.0, gamma:1.0,
-  intensity:1.0,
-  psize:2.0, glow:1.0,
-  ld:1.0,
-  tR:1.0, tG:1.0, tB:1.0,
-  gridOp:0.15
+  gain:1.0, gamma:1.0, spread:2.0,
+  intensity:1.0, psize:2.0, glow:1.0, ld:1.0,
+  gridOp:0.2
 };
 
 // ===================== SHADERS =====================
 
-var vsrc = [
-  'attribute vec2 a_pos;',
-  'varying vec2 v_uv;',
-  'void main(){',
-  '  v_uv = a_pos * 0.5 + 0.5;',
-  '  gl_Position = vec4(a_pos, 0.0, 1.0);',
-  '}'
-].join('\n');
+var vsrc = 'attribute vec2 a_pos;varying vec2 v_uv;void main(){v_uv=a_pos*0.5+0.5;gl_Position=vec4(a_pos,0,1);}';
 
-// Core density function: shared across all modes
-// For each output pixel (u,v), scan the source column at u
-// and accumulate: how many source pixels in that column
-// have a luminance that maps near this v position?
-// This is computed entirely in the shader = no banding!
-var densityFunc = [
-  'uniform sampler2D u_src;',
-  'uniform vec2 u_srcSize;',    // source width, height
-  'uniform float u_gain;',
-  'uniform float u_gamma;',
+// Shared header: density texture RGBA = (avgR, avgG, avgB, density)
+var fHead = [
+  'precision highp float;',
+  'varying vec2 v_uv;',
+  'uniform sampler2D u_density;',
+  'uniform float u_intensity;',
+  'uniform float u_gridOp;',
+  'uniform vec2 u_texSize;',
   '',
-  '// Compute density at output UV coordinate',
-  '// This scans the entire source column for this x position',
-  'float getDensity(vec2 uv) {',
-  '  float srcH = u_srcSize.y;',
-  '  float density = 0.0;',
-  '',
-  '  // Number of samples = source height (scan every pixel in column)',
-  '  // For performance, step by 1 source pixel',
-  '  float invSrcH = 1.0 / srcH;',
-  '',
-  '  for (float i = 0.0; i < 4096.0; i += 1.0) {',
-  '    if (i >= srcH) break;',
-  '    float sy = (i + 0.5) * invSrcH;',
-  '',
-  '    // Read source pixel luminance at (uv.x, sy)',
-  '    vec4 texel = texture2D(u_src, vec2(uv.x, sy));',
-  '    float lum = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));',
-  '    lum = clamp(lum * u_gain, 0.0, 1.0);',
-  '    lum = pow(lum, u_gamma);',
-  '',
-  '    // This source pixel maps to Y position (1-lum) in output',
-  '    float targetY = 1.0 - lum;',
-  '',
-  '    // How close is our output Y to this target?',
-  '    float dist = abs(uv.y - targetY);',
-  '',
-  '    // Smooth kernel: Gaussian contribution',
-  '    // Width scales with 1/srcH so each pixel contributes a smooth bump',
-  '    float sigma = 1.5 * invSrcH;',
-  '    density += exp(-dist * dist / (2.0 * sigma * sigma));',
-  '  }',
-  '',
-  '  // Normalize by source height',
-  '  density *= invSrcH;',
-  '  return density;',
+  '// Read density and color from texture',
+  '// .rgb = average source color at this density position',
+  '// .a   = normalized density (0-1)',
+  'vec4 readDensity(vec2 uv) {',
+  '  return texture2D(u_density, uv);',
   '}',
   ''
 ].join('\n');
 
-// Mode 0: Classic — density drives brightness directly
-var frag0 = [
-  'precision highp float;',
-  'varying vec2 v_uv;',
-  densityFunc,
-  'uniform float u_intensity;',
-  'uniform vec3 u_color;',
-  'uniform float u_gridOp;',
-  '',
+// Mode 0: Classic
+var frag0 = fHead + [
   'void main(){',
-  '  float d = getDensity(v_uv);',
-  '  d = d * u_intensity;',
+  '  vec4 dc = readDensity(v_uv);',
+  '  float d = dc.a * u_intensity;',
+  '  d = d / (d + 0.25);',
+  '  vec3 col = dc.rgb * d;',
   '',
-  '  // Tone mapping: soft clamp for natural look',
-  '  d = d / (d + 0.3);',
-  '',
-  '  vec3 col = u_color * d;',
-  '',
-  '  // Grid lines',
-  '  if (u_gridOp > 0.001) {',
-  '    float gx = step(0.998, fract(v_uv.x * 10.0)) * u_gridOp * 0.5;',
-  '    float gy = step(0.998, fract(v_uv.y * 10.0)) * u_gridOp * 0.5;',
-  '    float gx2 = step(0.999, fract(v_uv.x * 50.0)) * u_gridOp * 0.15;',
-  '    float gy2 = step(0.999, fract(v_uv.y * 50.0)) * u_gridOp * 0.15;',
-  '    col += vec3(gx + gy + gx2 + gy2);',
+  '  if(u_gridOp > 0.001){',
+  '    vec2 px = 1.0 / u_texSize;',
+  '    float gx = smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.4;',
+  '    float gy = smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.4;',
+  '    col += vec3(gx+gy)*vec3(0.3,0.35,0.4);',
   '  }',
-  '',
   '  gl_FragColor = vec4(col, 1.0);',
   '}'
 ].join('\n');
 
-// Mode 1: Particle — density creates glowing dots
-var frag1 = [
-  'precision highp float;',
-  'varying vec2 v_uv;',
-  densityFunc,
-  'uniform float u_intensity;',
-  'uniform vec3 u_color;',
+// Mode 1: Particle
+var frag1 = fHead + [
   'uniform float u_psize;',
   'uniform float u_glow;',
-  'uniform float u_gridOp;',
-  'uniform vec2 u_outSize;',
   '',
-  'float hash(vec2 p){',
-  '  p=fract(p*vec2(123.34,456.21));',
-  '  p+=dot(p,p+45.32);',
-  '  return fract(p.x*p.y);',
-  '}',
+  'float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
   '',
   'void main(){',
-  '  float d = getDensity(v_uv);',
-  '  vec2 px = 1.0 / u_outSize;',
+  '  vec2 px = 1.0 / u_texSize;',
+  '  vec4 dc = readDensity(v_uv);',
+  '  float d = dc.a;',
   '',
-  '  // Base glow from density',
-  '  float base = d * u_intensity * 0.3;',
+  '  float base = d * u_intensity * 0.4;',
   '  base = base / (base + 0.2);',
+  '  vec3 acc = dc.rgb * base;',
   '',
-  '  // Particle layer: grid of cells, jittered particles',
   '  float cellPx = u_psize * 3.0;',
-  '  vec2 cellSize = vec2(cellPx) * px;',
-  '  vec2 cellIdx = floor(v_uv / cellSize);',
-  '  vec3 acc = vec3(0.0);',
+  '  vec2 cs = vec2(cellPx) * px;',
+  '  vec2 ci = floor(v_uv / cs);',
   '',
   '  for(int dy=-1;dy<=1;dy++){',
   '    for(int dx=-1;dx<=1;dx++){',
-  '      vec2 nc = cellIdx + vec2(float(dx),float(dy));',
+  '      vec2 nc = ci + vec2(float(dx),float(dy));',
   '      float rx = hash(nc);',
-  '      float ry = hash(nc + vec2(7.0,13.0));',
-  '      vec2 pUV = (nc + vec2(rx, ry)) * cellSize;',
-  '',
+  '      float ry = hash(nc+vec2(7,13));',
+  '      vec2 pUV = (nc + vec2(rx,ry)) * cs;',
   '      if(pUV.x<0.0||pUV.x>1.0||pUV.y<0.0||pUV.y>1.0) continue;',
   '',
-  '      float pd = getDensity(pUV);',
+  '      vec4 pdc = readDensity(pUV);',
+  '      float pd = pdc.a;',
   '      if(pd < 0.01) continue;',
   '',
   '      vec2 diff = (v_uv - pUV) / px;',
-  '      float dist2 = dot(diff, diff);',
-  '      float r = u_psize * (0.3 + pd * 0.7);',
-  '      float falloff = exp(-dist2 / (r * r * u_glow));',
+  '      float dist2 = dot(diff,diff);',
+  '      float r = u_psize * (0.3 + pd*0.7);',
+  '      float fo = exp(-dist2/(r*r*u_glow));',
   '',
-  '      acc += u_color * pd * falloff * u_intensity * 0.5;',
+  '      float bright = pd * fo * u_intensity * 0.6;',
+  '      acc += pdc.rgb * bright;',
   '    }',
   '  }',
   '',
-  '  vec3 col = u_color * base + acc;',
-  '',
-  '  if(u_gridOp > 0.001){',
-  '    float g = step(0.998, fract(v_uv.x*10.0))*u_gridOp*0.5',
-  '           + step(0.998, fract(v_uv.y*10.0))*u_gridOp*0.5;',
-  '    col += vec3(g);',
+  '  if(u_gridOp>0.001){',
+  '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
+  '         +smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.3;',
+  '    acc+=vec3(g)*vec3(0.3,0.35,0.4);',
   '  }',
-  '',
-  '  gl_FragColor = vec4(col, 1.0);',
+  '  gl_FragColor = vec4(acc, 1.0);',
   '}'
 ].join('\n');
 
-// Mode 2: Fiber — contour lines of density field
-var frag2 = [
-  'precision highp float;',
-  'varying vec2 v_uv;',
-  densityFunc,
-  'uniform float u_intensity;',
-  'uniform vec3 u_color;',
+// Mode 2: Fiber
+var frag2 = fHead + [
   'uniform float u_ld;',
-  'uniform float u_gridOp;',
-  'uniform vec2 u_outSize;',
   '',
   'void main(){',
-  '  float d = getDensity(v_uv);',
-  '  vec2 px = 1.0 / u_outSize;',
+  '  vec2 px = 1.0 / u_texSize;',
+  '  vec4 dc = readDensity(v_uv);',
+  '  float d = dc.a;',
   '',
-  '  // Gradient via finite differences of density',
-  '  float dR = getDensity(v_uv + vec2(px.x * 2.0, 0.0));',
-  '  float dL = getDensity(v_uv - vec2(px.x * 2.0, 0.0));',
-  '  float dU = getDensity(v_uv - vec2(0.0, px.y * 2.0));',
-  '  float dD = getDensity(v_uv + vec2(0.0, px.y * 2.0));',
+  '  float dR = readDensity(v_uv+vec2(px.x,0)).a;',
+  '  float dL = readDensity(v_uv-vec2(px.x,0)).a;',
+  '  float dU = readDensity(v_uv-vec2(0,px.y)).a;',
+  '  float dD = readDensity(v_uv+vec2(0,px.y)).a;',
   '  float gx = dR - dL;',
   '  float gy = dD - dU;',
-  '  float grad = length(vec2(gx, gy));',
+  '  float grad = length(vec2(gx,gy));',
   '',
-  '  // Contour lines',
   '  float levels = 25.0 * u_ld;',
-  '  float scaled = d * levels;',
-  '  float f = fract(scaled);',
-  '  float distToLine = min(f, 1.0 - f);',
-  '  float pixDist = distToLine / (grad * levels + 0.0001);',
+  '  float f = fract(d * levels);',
+  '  float distL = min(f, 1.0-f);',
+  '  float pixD = distL / (grad*levels + 0.0001);',
+  '  float line = 1.0 - smoothstep(0.0, 1.2, pixD);',
   '',
-  '  float line = 1.0 - smoothstep(0.0, 1.5, pixDist);',
-  '  float val = line * d * u_intensity * (0.3 + grad * 15.0);',
-  '  val = val / (val + 0.25);',
+  '  float val = line * d * u_intensity * (0.3 + grad*15.0);',
+  '  val = val / (val + 0.2);',
+  '  vec3 col = dc.rgb * val;',
   '',
-  '  vec3 col = u_color * val;',
-  '',
-  '  if(u_gridOp > 0.001){',
-  '    float g = step(0.998, fract(v_uv.x*10.0))*u_gridOp*0.5',
-  '           + step(0.998, fract(v_uv.y*10.0))*u_gridOp*0.5;',
-  '    col += vec3(g);',
+  '  if(u_gridOp>0.001){',
+  '    float g=smoothstep(1.0-px.x*1.5,1.0,fract(v_uv.x*10.0))*u_gridOp*0.3',
+  '         +smoothstep(1.0-px.y*1.5,1.0,fract(v_uv.y*10.0))*u_gridOp*0.3;',
+  '    col+=vec3(g)*vec3(0.3,0.35,0.4);',
   '  }',
-  '',
   '  gl_FragColor = vec4(col, 1.0);',
   '}'
 ].join('\n');
@@ -355,12 +296,18 @@ var frag2 = [
 
 function initGL() {
   glCanvas = document.getElementById('gl');
-  cWrap = document.getElementById('cWrap');
+  scopeArea = document.getElementById('scopeArea');
+  glWrap = document.getElementById('glWrap');
+  scaleCanvas = document.getElementById('scaleCanvas');
+  scaleCtx = scaleCanvas.getContext('2d');
 
   gl = glCanvas.getContext('webgl', {
     alpha:false, antialias:false, preserveDrawingBuffer:true, premultipliedAlpha:false
   });
   if (!gl) { alert('WebGL required'); return; }
+
+  gl.getExtension('OES_texture_float');
+  gl.getExtension('OES_texture_float_linear');
 
   quadBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
@@ -371,10 +318,11 @@ function initGL() {
   programs[2] = mkProg(vsrc, frag2);
 
   fitCanvas();
-  window.addEventListener('resize', function(){ fitCanvas(); render(); });
+  window.addEventListener('resize', function(){ fitCanvas(); if(srcLum) rebuildAndRender(); else render(); drawScale(); });
   setupIO();
   updateVis();
   render();
+  drawScale();
 }
 
 function mkShader(type, src) {
@@ -404,27 +352,213 @@ function mkProg(vs, fs) {
 }
 
 function fitCanvas() {
-  var rect = cWrap.getBoundingClientRect();
-  var aw = Math.round(rect.width);
-  var ah = Math.round(rect.height);
+  var rect = glWrap.getBoundingClientRect();
+  var w = Math.round(rect.width);
+  var h = Math.round(rect.height);
+  var dpr = window.devicePixelRatio || 1;
+  glCanvas.width = Math.round(w * dpr);
+  glCanvas.height = Math.round(h * dpr);
 
-  if (srcW > 0 && srcH > 0) {
-    var aspect = srcW / srcH;
-    var cw, ch;
-    if (aw / ah > aspect) { ch = ah; cw = Math.round(ah * aspect); }
-    else { cw = aw; ch = Math.round(aw / aspect); }
-    glCanvas.style.width = cw + 'px';
-    glCanvas.style.height = ch + 'px';
-    // Use DPR for sharp preview
-    var dpr = window.devicePixelRatio || 1;
-    glCanvas.width = Math.round(cw * dpr);
-    glCanvas.height = Math.round(ch * dpr);
-  } else {
-    glCanvas.style.width = aw + 'px';
-    glCanvas.style.height = ah + 'px';
-    glCanvas.width = aw;
-    glCanvas.height = ah;
+  // Scale canvas covers entire scope area
+  var sr = scopeArea.getBoundingClientRect();
+  scaleCanvas.width = Math.round(sr.width * dpr);
+  scaleCanvas.height = Math.round(sr.height * dpr);
+  scaleCanvas.style.width = sr.width + 'px';
+  scaleCanvas.style.height = sr.height + 'px';
+}
+
+// ===================== DENSITY MAP (CPU) =====================
+
+function extractSource(img) {
+  srcW = img.naturalWidth || img.width;
+  srcH = img.naturalHeight || img.height;
+
+  var tc = document.createElement('canvas');
+  tc.width = srcW; tc.height = srcH;
+  var tctx = tc.getContext('2d');
+  tctx.drawImage(img, 0, 0);
+  var id = tctx.getImageData(0, 0, srcW, srcH);
+  srcPixels = id.data;
+
+  var n = srcW * srcH;
+  srcLum = new Float32Array(n);
+  srcR = new Float32Array(n);
+  srcG_ = new Float32Array(n);
+  srcB_ = new Float32Array(n);
+  for (var i = 0; i < n; i++) {
+    var r = srcPixels[i*4] / 255.0;
+    var g = srcPixels[i*4+1] / 255.0;
+    var b = srcPixels[i*4+2] / 255.0;
+    srcR[i] = r;
+    srcG_[i] = g;
+    srcB_[i] = b;
+    srcLum[i] = 0.2126*r + 0.7152*g + 0.0722*b;
   }
+
+  document.getElementById('srcPrev').src = tc.toDataURL();
+}
+
+function buildDensity() {
+  if (!srcLum) return;
+
+  var gain = P.gain;
+  var gamma = P.gamma;
+  var spread = P.spread;
+
+  densityW = glCanvas.width;
+  densityH = glCanvas.height;
+
+  var maxPreviewDim = 2048;
+  if (densityW > maxPreviewDim) {
+    var s = maxPreviewDim / densityW;
+    densityW = maxPreviewDim;
+    densityH = Math.round(densityH * s);
+  }
+  if (densityH > maxPreviewDim) {
+    var s = maxPreviewDim / densityH;
+    densityH = maxPreviewDim;
+    densityW = Math.round(densityW * s);
+  }
+
+  // Accumulation height: x8 for anti-banding
+  var AH = densityH * 8;
+  // 4 channels: R, G, B, total density
+  var accumR = new Float32Array(densityW * AH);
+  var accumG = new Float32Array(densityW * AH);
+  var accumB = new Float32Array(densityW * AH);
+  var accumD = new Float32Array(densityW * AH);
+
+  // Gaussian kernel
+  var sigma = spread * (AH / densityH);
+  var kRad = Math.min(Math.ceil(sigma * 3), 20);
+  var kern = new Float32Array(kRad * 2 + 1);
+  var kSum = 0;
+  for (var k = -kRad; k <= kRad; k++) {
+    var w = Math.exp(-(k*k) / (2*sigma*sigma));
+    kern[k + kRad] = w;
+    kSum += w;
+  }
+  for (var k = 0; k < kern.length; k++) kern[k] /= kSum;
+
+  var colScale = densityW / srcW;
+
+  for (var sx = 0; sx < srcW; sx++) {
+    var ox0 = Math.floor(sx * colScale);
+    var ox1 = Math.ceil((sx + 1) * colScale);
+    if (ox1 > densityW) ox1 = densityW;
+
+    for (var sy = 0; sy < srcH; sy++) {
+      var idx = sy * srcW + sx;
+      var lum = srcLum[idx] * gain;
+      if (lum > 1.0) lum = 1.0;
+      lum = Math.pow(lum, gamma);
+
+      // Source pixel color
+      var pr = srcR[idx];
+      var pg = srcG_[idx];
+      var pb = srcB_[idx];
+
+      // HIGH luminance = TOP of scope (low Y value)
+      var mappedY = lum * (AH - 1);
+      var baseY = Math.round(mappedY);
+
+      for (var ox = ox0; ox < ox1; ox++) {
+        var base = ox * AH;
+        for (var k = 0; k < kern.length; k++) {
+          var ky = baseY + k - kRad;
+          if (ky >= 0 && ky < AH) {
+            var kv = kern[k];
+            accumR[base + ky] += pr * kv;
+            accumG[base + ky] += pg * kv;
+            accumB[base + ky] += pb * kv;
+            accumD[base + ky] += kv;
+          }
+        }
+      }
+    }
+  }
+
+  // Downsample AH -> densityH, store as RGBA
+  var texData = new Float32Array(densityW * densityH * 4);
+  var binH = AH / densityH;
+
+  // Find max density for normalization
+  var maxD = 0;
+
+  for (var ox = 0; ox < densityW; ox++) {
+    var aBase = ox * AH;
+    for (var oy = 0; oy < densityH; oy++) {
+      var y0 = oy * binH;
+      var y1 = y0 + binH;
+      var iy0 = Math.floor(y0);
+      var iy1 = Math.ceil(y1);
+      if (iy1 > AH) iy1 = AH;
+      var sR = 0, sG = 0, sB = 0, sD = 0;
+      for (var ay = iy0; ay < iy1; ay++) {
+        var lo = ay < y0 ? y0 : ay;
+        var hi = (ay+1) > y1 ? y1 : (ay+1);
+        if (hi > lo) {
+          var w = hi - lo;
+          sR += accumR[aBase + ay] * w;
+          sG += accumG[aBase + ay] * w;
+          sB += accumB[aBase + ay] * w;
+          sD += accumD[aBase + ay] * w;
+        }
+      }
+      sR /= binH; sG /= binH; sB /= binH; sD /= binH;
+
+      var pi = (oy * densityW + ox) * 4;
+      texData[pi]   = sR;
+      texData[pi+1] = sG;
+      texData[pi+2] = sB;
+      texData[pi+3] = sD;
+
+      if (sD > maxD) maxD = sD;
+    }
+  }
+
+  // Normalize: scale so max density = 1, color = average color at that density
+  if (maxD > 0) {
+    var inv = 1.0 / maxD;
+    for (var i = 0; i < densityW * densityH; i++) {
+      var pi = i * 4;
+      var d = texData[pi+3];
+      if (d > 0.0001) {
+        // Average color = accumulated color / density count
+        texData[pi]   = texData[pi]   / d;  // avg R
+        texData[pi+1] = texData[pi+1] / d;  // avg G
+        texData[pi+2] = texData[pi+2] / d;  // avg B
+      }
+      texData[pi+3] = d * inv;  // normalized density
+    }
+  }
+
+  uploadDensity(texData);
+}
+
+function uploadDensity(texData) {
+  if (!densityTex) densityTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, densityTex);
+
+  // texData is already Float32Array with RGBA: [avgR, avgG, avgB, normalizedDensity]
+  try {
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.FLOAT, texData);
+  } catch(e) {
+    // Fallback: encode to UNSIGNED_BYTE
+    var bytes = new Uint8Array(densityW * densityH * 4);
+    for (var i = 0; i < densityW * densityH; i++) {
+      bytes[i*4]   = Math.min(255, Math.round(texData[i*4]   * 255));
+      bytes[i*4+1] = Math.min(255, Math.round(texData[i*4+1] * 255));
+      bytes[i*4+2] = Math.min(255, Math.round(texData[i*4+2] * 255));
+      bytes[i*4+3] = Math.min(255, Math.round(texData[i*4+3] * 255));
+    }
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, densityW, densityH, 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+  }
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 }
 
 // ===================== RENDER =====================
@@ -432,12 +566,11 @@ function fitCanvas() {
 function render() {
   var w = glCanvas.width;
   var h = glCanvas.height;
-
   gl.viewport(0, 0, w, h);
   gl.clearColor(0,0,0,1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  if (!srcTex || srcW === 0) return;
+  if (!densityTex || !srcLum) return;
 
   var prog = programs[curMode];
   if (!prog) return;
@@ -450,102 +583,188 @@ function render() {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, srcTex);
-  gl.uniform1i(gl.getUniformLocation(prog, 'u_src'), 0);
+  gl.bindTexture(gl.TEXTURE_2D, densityTex);
+  gl.uniform1i(gl.getUniformLocation(prog, 'u_density'), 0);
 
-  gl.uniform2f(gl.getUniformLocation(prog, 'u_srcSize'), srcW, srcH);
-  gl.uniform1f(gl.getUniformLocation(prog, 'u_gain'), P.gain);
-  gl.uniform1f(gl.getUniformLocation(prog, 'u_gamma'), P.gamma);
   gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), P.intensity);
-  gl.uniform3f(gl.getUniformLocation(prog, 'u_color'), P.tR, P.tG, P.tB);
   gl.uniform1f(gl.getUniformLocation(prog, 'u_gridOp'), P.gridOp);
+  gl.uniform2f(gl.getUniformLocation(prog, 'u_texSize'), densityW, densityH);
 
   if (curMode === 1) {
     gl.uniform1f(gl.getUniformLocation(prog, 'u_psize'), P.psize);
     gl.uniform1f(gl.getUniformLocation(prog, 'u_glow'), P.glow);
-    gl.uniform2f(gl.getUniformLocation(prog, 'u_outSize'), w, h);
   }
   if (curMode === 2) {
     gl.uniform1f(gl.getUniformLocation(prog, 'u_ld'), P.ld);
-    gl.uniform2f(gl.getUniformLocation(prog, 'u_outSize'), w, h);
   }
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-// ===================== HI-RES RENDER =====================
+function rebuildAndRender() {
+  buildDensity();
+  render();
+  drawScale();
+}
+
+// ===================== SCALE DRAWING =====================
+
+function drawScale() {
+  var dpr = window.devicePixelRatio || 1;
+  var cw = scaleCanvas.width;
+  var ch = scaleCanvas.height;
+  var ctx = scaleCtx;
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Get GL canvas position relative to scope area
+  var scopeRect = scopeArea.getBoundingClientRect();
+  var glRect = glWrap.getBoundingClientRect();
+  var ox = (glRect.left - scopeRect.left) * dpr;
+  var oy = (glRect.top - scopeRect.top) * dpr;
+  var gw = glRect.width * dpr;
+  var gh = glRect.height * dpr;
+
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = dpr;
+  ctx.fillStyle = '#333';
+  ctx.font = (8 * dpr) + 'px Courier New';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'right';
+
+  // Y axis: 0 (bottom) to 100 (top) - luminance percentage
+  var ySteps = 10;
+  for (var i = 0; i <= ySteps; i++) {
+    var frac = i / ySteps;
+    var y = oy + gh - frac * gh;
+    var label = Math.round(frac * 100);
+
+    // Tick mark
+    ctx.beginPath();
+    ctx.moveTo(ox - 4 * dpr, y);
+    ctx.lineTo(ox, y);
+    ctx.stroke();
+
+    // Label
+    ctx.fillText(label, ox - 6 * dpr, y);
+
+    // Grid line (subtle)
+    if (i > 0 && i < ySteps) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath();
+      ctx.moveTo(ox, y);
+      ctx.lineTo(ox + gw, y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // X axis: column position 0% to 100%
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  var xSteps = 10;
+  for (var i = 0; i <= xSteps; i++) {
+    var frac = i / xSteps;
+    var x = ox + frac * gw;
+    var label = Math.round(frac * 100);
+
+    ctx.beginPath();
+    ctx.moveTo(x, oy + gh);
+    ctx.lineTo(x, oy + gh + 4 * dpr);
+    ctx.stroke();
+
+    ctx.fillText(label, x, oy + gh + 5 * dpr);
+
+    if (i > 0 && i < xSteps) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath();
+      ctx.moveTo(x, oy);
+      ctx.lineTo(x, oy + gh);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Border
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.strokeRect(ox, oy, gw, gh);
+
+  // Y axis label
+  ctx.save();
+  ctx.fillStyle = '#222';
+  ctx.font = (7 * dpr) + 'px Courier New';
+  ctx.translate(8 * dpr, oy + gh / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('LUMINANCE %', 0, 0);
+  ctx.restore();
+
+  // X axis label
+  ctx.fillStyle = '#222';
+  ctx.font = (7 * dpr) + 'px Courier New';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('COLUMN %', ox + gw / 2, oy + gh + 16 * dpr);
+}
+
+// ===================== HI-RES =====================
 
 function renderHi() {
-  if (!srcTex || srcW === 0) return;
+  if (!srcLum) return;
 
   var scale = renderScale;
   var outW = Math.min(srcW * scale, 8192);
   var outH = Math.min(srcH * scale, 8192);
 
-  // Check max texture/viewport size
   var maxSize = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
   outW = Math.min(outW, maxSize[0]);
   outH = Math.min(outH, maxSize[1]);
 
-  // Save current state
-  var oldW = glCanvas.width;
-  var oldH = glCanvas.height;
-  var oldSW = glCanvas.style.width;
-  var oldSH = glCanvas.style.height;
+  // Build density at hi-res
+  var oldDW = densityW, oldDH = densityH;
+  densityW = outW;
+  densityH = outH;
 
-  // Resize to hi-res
-  glCanvas.width = outW;
-  glCanvas.height = outH;
-  render();
+  document.getElementById('hI').textContent = 'RENDERING ' + outW + 'x' + outH + '...';
 
-  // Capture
-  var dataURL = glCanvas.toDataURL('image/png');
+  setTimeout(function() {
+    buildDensity();
 
-  // Restore
-  glCanvas.width = oldW;
-  glCanvas.height = oldH;
-  glCanvas.style.width = oldSW;
-  glCanvas.style.height = oldSH;
-  render();
+    var oldW = glCanvas.width;
+    var oldH = glCanvas.height;
+    glCanvas.width = outW;
+    glCanvas.height = outH;
+    render();
 
-  // Show overlay
-  document.getElementById('hiImg').src = dataURL;
-  document.getElementById('hiOv').classList.add('show');
-  window._hiData = dataURL;
+    var dataURL = glCanvas.toDataURL('image/png');
 
-  document.getElementById('hI').textContent = 'HI-RES: ' + outW + 'x' + outH;
+    // Restore
+    glCanvas.width = oldW;
+    glCanvas.height = oldH;
+    densityW = oldDW;
+    densityH = oldDH;
+    buildDensity();
+    render();
+
+    document.getElementById('hiImg').src = dataURL;
+    document.getElementById('hiOv').classList.add('show');
+    window._hiData = dataURL;
+    document.getElementById('hI').textContent = 'HI-RES: ' + outW + 'x' + outH;
+  }, 50);
 }
 
-function closeHi() {
-  document.getElementById('hiOv').classList.remove('show');
-}
+function closeHi() { document.getElementById('hiOv').classList.remove('show'); }
 
-// ===================== IMAGE LOADING =====================
+// ===================== IMAGE =====================
 
 function processImg(img) {
   srcImg = img;
-  srcW = img.naturalWidth || img.width;
-  srcH = img.naturalHeight || img.height;
-
-  // Upload as texture
-  if (!srcTex) srcTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, srcTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  // Preview source
-  var tc = document.createElement('canvas');
-  tc.width = srcW; tc.height = srcH;
-  tc.getContext('2d').drawImage(img, 0, 0);
-  document.getElementById('srcPrev').src = tc.toDataURL();
-
-  document.getElementById('drOv').classList.add('hidden');
+  extractSource(img);
   fitCanvas();
-  render();
-
+  rebuildAndRender();
+  document.getElementById('drOv').classList.add('hidden');
   document.getElementById('hI').textContent = srcW + 'x' + srcH;
 }
 
@@ -563,9 +782,8 @@ function setupIO() {
     r.readAsDataURL(f);
   });
   document.getElementById('drOv').addEventListener('click', function() { loadImg(); });
-  var m = document.getElementById('main');
-  m.addEventListener('dragover', function(e) { e.preventDefault(); });
-  m.addEventListener('drop', function(e) {
+  document.getElementById('main').addEventListener('dragover', function(e) { e.preventDefault(); });
+  document.getElementById('main').addEventListener('drop', function(e) {
     e.preventDefault();
     var f = e.dataTransfer.files[0];
     if (!f || !f.type.match('image.*')) return;
@@ -593,14 +811,15 @@ function setM(m) {
 }
 
 function updateVis() {
-  document.getElementById('rPs').style.display = curMode === 1 ? '' : 'none';
-  document.getElementById('rGl').style.display = curMode === 1 ? '' : 'none';
-  document.getElementById('rLd').style.display = curMode === 2 ? '' : 'none';
+  document.getElementById('rPs').style.display = curMode===1?'':'none';
+  document.getElementById('rGl').style.display = curMode===1?'':'none';
+  document.getElementById('rLd').style.display = curMode===2?'':'none';
 }
 
-function onP() {
+function onP(rebuild) {
   P.gain = parseFloat(document.getElementById('sG').value);
   P.gamma = parseFloat(document.getElementById('sGm').value);
+  P.spread = parseFloat(document.getElementById('sSp').value);
   P.intensity = parseFloat(document.getElementById('sIn').value);
   P.psize = parseFloat(document.getElementById('sPs').value);
   P.glow = parseFloat(document.getElementById('sGl').value);
@@ -609,21 +828,15 @@ function onP() {
 
   document.getElementById('vG').textContent = P.gain.toFixed(2);
   document.getElementById('vGm').textContent = P.gamma.toFixed(2);
+  document.getElementById('vSp').textContent = P.spread.toFixed(1);
   document.getElementById('vIn').textContent = P.intensity.toFixed(2);
   document.getElementById('vPs').textContent = P.psize.toFixed(1);
   document.getElementById('vGl').textContent = P.glow.toFixed(2);
   document.getElementById('vLd').textContent = P.ld.toFixed(2);
   document.getElementById('vGr').textContent = P.gridOp.toFixed(2);
 
-  render();
-}
-
-function onC(hex) {
-  document.getElementById('cSw').style.background = hex;
-  P.tR = parseInt(hex.substr(1,2),16)/255;
-  P.tG = parseInt(hex.substr(3,2),16)/255;
-  P.tB = parseInt(hex.substr(5,2),16)/255;
-  render();
+  if (rebuild && srcLum) rebuildAndRender();
+  else render();
 }
 
 function onRs() {
@@ -634,8 +847,8 @@ function onRs() {
 function togPnl() {
   document.getElementById('pnl').classList.toggle('collapsed');
   document.getElementById('togB').classList.toggle('shifted');
-  document.getElementById('cWrap').classList.toggle('full');
-  setTimeout(function(){ fitCanvas(); render(); }, 250);
+  document.getElementById('scopeArea').classList.toggle('full');
+  setTimeout(function(){ fitCanvas(); if(srcLum) rebuildAndRender(); drawScale(); }, 250);
 }
 
 function togSrc() {
