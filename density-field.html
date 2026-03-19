@@ -3,865 +3,627 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>DENSITY FIELD v3</title>
+<title>DENSITY FIELD v4</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#080808;color:#aaa;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
-
-#header{height:30px;display:flex;align-items:center;padding:0 12px;background:#0a0a0a;border-bottom:1px solid #151515;flex-shrink:0;justify-content:space-between}
-#header .t{font-size:9px;letter-spacing:3px;color:#444}
-#header .t b{color:#777;font-weight:normal}
-#header .info{font-size:8px;color:#2a2a2a;letter-spacing:1px}
-
+body{background:#050505;color:#aaa;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
+#header{height:28px;display:flex;align-items:center;padding:0 10px;background:#080808;border-bottom:1px solid #111;flex-shrink:0;justify-content:space-between}
+#header .t{font-size:9px;letter-spacing:3px;color:#333}
+#header .t b{color:#666;font-weight:normal}
+#header .info{font-size:8px;color:#282828;letter-spacing:1px}
 #main{flex:1;display:flex;position:relative;overflow:hidden}
-
-#canvasWrap{position:absolute;top:0;left:0;right:250px;bottom:0;display:flex;align-items:center;justify-content:center;background:#000}
-#canvasWrap.full{right:0}
-#renderCanvas{display:block;background:#000;image-rendering:auto}
+#cWrap{position:absolute;top:0;left:0;right:240px;bottom:0;display:flex;align-items:center;justify-content:center;background:#000}
+#cWrap.full{right:0}
+canvas#gl{display:block;background:#000}
 
 /* Source preview */
-#srcPreview{display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:3}
-#srcPreview.show{display:block}
+#srcPrev{display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:3}
+#srcPrev.show{display:block}
 
-/* Hires overlay */
-#hiresOv{display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;background:#000;overflow:auto}
-#hiresOv.show{display:flex;align-items:center;justify-content:center}
-#hiresOv img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-out}
-#hiresClose{position:fixed;top:8px;right:8px;z-index:21;background:#111;border:1px solid #333;color:#777;font-family:'Courier New',monospace;font-size:9px;padding:4px 12px;cursor:pointer;letter-spacing:2px}
+/* Hires */
+#hiOv{display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;background:#000;overflow:auto}
+#hiOv.show{display:flex;align-items:center;justify-content:center}
+#hiOv img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-out}
+#hiCl{position:fixed;top:6px;right:6px;z-index:21;background:#0a0a0a;border:1px solid #2a2a2a;color:#666;font-family:'Courier New',monospace;font-size:8px;padding:3px 10px;cursor:pointer;letter-spacing:2px}
 
 /* Drop */
-#dropOv{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(5,5,5,0.96);z-index:30;transition:opacity 0.3s}
-#dropOv.hidden{opacity:0;pointer-events:none}
-#dropOv .inn{border:1px dashed #2a2a2a;padding:50px 70px;text-align:center}
-#dropOv .inn p{font-size:10px;letter-spacing:3px;color:#444;margin-bottom:4px}
-#dropOv .inn .s{font-size:8px;color:#2a2a2a}
+#drOv{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(3,3,3,0.97);z-index:30;transition:opacity 0.3s}
+#drOv.hidden{opacity:0;pointer-events:none}
+#drOv .inn{border:1px dashed #222;padding:50px 70px;text-align:center}
+#drOv .inn p{font-size:10px;letter-spacing:3px;color:#383838}
+#drOv .inn .s{font-size:8px;color:#222;margin-top:4px}
 
 /* Panel */
-#panel{position:absolute;top:0;right:0;width:250px;height:100%;background:#0a0a0a;border-left:1px solid #151515;z-index:5;overflow-y:auto;padding:12px 10px;transition:transform 0.2s ease}
-#panel.collapsed{transform:translateX(250px)}
-#togBtn{position:absolute;top:5px;z-index:6;background:#0e0e0e;border:1px solid #1a1a1a;color:#444;font-family:'Courier New',monospace;font-size:8px;padding:3px 7px;cursor:pointer;letter-spacing:1px;transition:right 0.2s;right:256px}
-#togBtn.shifted{right:5px}
-
-.sec{margin-bottom:12px}
-.lbl{font-size:7.5px;letter-spacing:2.5px;color:#333;margin-bottom:6px;text-transform:uppercase;border-bottom:1px solid #141414;padding-bottom:3px}
-
-.mbtn{display:block;width:100%;background:#0c0c0c;border:1px solid #171717;color:#555;font-family:'Courier New',monospace;font-size:8.5px;padding:6px 7px;cursor:pointer;text-align:left;letter-spacing:0.5px;margin-bottom:2px;transition:all 0.1s}
-.mbtn:hover{border-color:#2a2a2a;color:#888}
-.mbtn.active{border-color:#444;color:#bbb;background:#111}
-.mbtn .d{font-size:7px;color:#2a2a2a;display:block;margin-top:1px}
-.mbtn.active .d{color:#3a3a3a}
-
-.sr{margin-bottom:7px}
+#pnl{position:absolute;top:0;right:0;width:240px;height:100%;background:#080808;border-left:1px solid #111;z-index:5;overflow-y:auto;padding:10px 9px;transition:transform 0.2s}
+#pnl.collapsed{transform:translateX(240px)}
+#togB{position:absolute;top:4px;z-index:6;background:#0a0a0a;border:1px solid #181818;color:#383838;font-family:'Courier New',monospace;font-size:8px;padding:2px 6px;cursor:pointer;letter-spacing:1px;transition:right 0.2s;right:246px}
+#togB.shifted{right:4px}
+.sc{margin-bottom:11px}
+.lb{font-size:7px;letter-spacing:2.5px;color:#2a2a2a;margin-bottom:5px;text-transform:uppercase;border-bottom:1px solid #111;padding-bottom:3px}
+.mb{display:block;width:100%;background:#090909;border:1px solid #141414;color:#4a4a4a;font-family:'Courier New',monospace;font-size:8px;padding:5px 6px;cursor:pointer;text-align:left;letter-spacing:0.5px;margin-bottom:1px;transition:all 0.1s}
+.mb:hover{border-color:#222;color:#777}
+.mb.a{border-color:#383838;color:#aaa;background:#0e0e0e}
+.mb .d{font-size:6.5px;color:#222;display:block;margin-top:1px}
+.mb.a .d{color:#333}
+.sr{margin-bottom:6px}
 .sh{display:flex;justify-content:space-between;margin-bottom:1px}
-.sn{font-size:7.5px;color:#383838;letter-spacing:1px}
-.sv{font-size:7.5px;color:#444;font-variant-numeric:tabular-nums}
-input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#161616;outline:none;cursor:pointer}
-input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:7px;height:11px;background:#3a3a3a;border:none;cursor:pointer}
-
-.crow{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.csw{width:18px;height:18px;border:1px solid #222;position:relative;flex-shrink:0}
+.sn{font-size:7px;color:#303030;letter-spacing:1px}
+.sv{font-size:7px;color:#3a3a3a;font-variant-numeric:tabular-nums}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:#141414;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:6px;height:10px;background:#333;border:none;cursor:pointer}
+.ab{background:#090909;border:1px solid #141414;color:#383838;font-family:'Courier New',monospace;font-size:7px;padding:4px 7px;cursor:pointer;letter-spacing:1.5px;width:100%;margin-bottom:2px;text-align:center;transition:all 0.1s}
+.ab:hover{border-color:#222;color:#666}
+.ab.hl{border-color:#2a2a2a;color:#777}
+.crow{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.csw{width:16px;height:16px;border:1px solid #1a1a1a;position:relative}
 .csw input{opacity:0;position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer}
-
-.abtn{background:#0c0c0c;border:1px solid #171717;color:#444;font-family:'Courier New',monospace;font-size:7.5px;padding:5px 8px;cursor:pointer;letter-spacing:1.5px;width:100%;margin-bottom:2px;text-align:center;transition:all 0.1s}
-.abtn:hover{border-color:#2a2a2a;color:#777}
-.abtn.hl{border-color:#333;color:#888}
-
-#statusBar{font-size:7px;color:#222;letter-spacing:0.5px;margin-top:6px;line-height:1.6}
-
-#panel::-webkit-scrollbar{width:2px}
-#panel::-webkit-scrollbar-track{background:#080808}
-#panel::-webkit-scrollbar-thumb{background:#1a1a1a}
-
-/* Progress */
-#progWrap{display:none;position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:15;background:#111;border:1px solid #222;padding:8px 20px;text-align:center}
-#progWrap.show{display:block}
-#progText{font-size:8px;color:#555;letter-spacing:1px;margin-bottom:4px}
-#progBar{width:200px;height:2px;background:#1a1a1a}
-#progFill{width:0%;height:100%;background:#555;transition:width 0.1s}
+#stB{font-size:6.5px;color:#1a1a1a;letter-spacing:0.5px;margin-top:5px;line-height:1.5}
+#pnl::-webkit-scrollbar{width:2px}
+#pnl::-webkit-scrollbar-track{background:#060606}
+#pnl::-webkit-scrollbar-thumb{background:#151515}
 </style>
 </head>
 <body>
-
 <div id="header">
-  <div class="t"><b>DENSITY FIELD</b> · v3</div>
-  <div class="info" id="hInfo"></div>
+  <div class="t"><b>DENSITY FIELD</b> · v4</div>
+  <div class="info" id="hI"></div>
 </div>
-
 <div id="main">
-  <div id="canvasWrap">
-    <canvas id="renderCanvas"></canvas>
-    <img id="srcPreview" alt="">
+  <div id="cWrap">
+    <canvas id="gl"></canvas>
+    <img id="srcPrev" alt="">
   </div>
-
-  <div id="dropOv">
-    <div class="inn">
-      <p>DROP IMAGE</p>
-      <div class="s">or click to select</div>
-    </div>
+  <div id="drOv">
+    <div class="inn"><p>DROP IMAGE</p><div class="s">or click to select</div></div>
   </div>
-
-  <div id="hiresOv">
-    <img id="hiresImg" alt="">
-    <button id="hiresClose" onclick="closeHires()">CLOSE</button>
+  <div id="hiOv">
+    <img id="hiImg" alt="">
+    <button id="hiCl" onclick="closeHi()">CLOSE</button>
   </div>
-
-  <div id="progWrap">
-    <div id="progText">RENDERING...</div>
-    <div id="progBar"><div id="progFill"></div></div>
-  </div>
-
-  <button id="togBtn" onclick="togglePanel()">CTRL</button>
-
-  <div id="panel">
-    <div class="sec">
-      <div class="lbl">MODE</div>
-      <button class="mbtn active" onclick="setMode(0)" id="m0">① CLASSIC WAVEFORM<span class="d">密度→明度 基準描画</span></button>
-      <button class="mbtn" onclick="setMode(1)" id="m1">② PARTICLE<span class="d">加算合成パーティクル</span></button>
-      <button class="mbtn" onclick="setMode(2)" id="m2">③ LINE / FIBER<span class="d">密度等高線 繊維描画</span></button>
+  <button id="togB" onclick="togPnl()">CTRL</button>
+  <div id="pnl">
+    <div class="sc">
+      <div class="lb">MODE</div>
+      <button class="mb a" onclick="setM(0)" id="m0">① CLASSIC<span class="d">密度→輝度</span></button>
+      <button class="mb" onclick="setM(1)" id="m1">② PARTICLE<span class="d">加算合成発光</span></button>
+      <button class="mb" onclick="setM(2)" id="m2">③ FIBER<span class="d">等密度線</span></button>
     </div>
-
-    <div class="sec">
-      <div class="lbl">DENSITY</div>
-      <div class="sr"><div class="sh"><span class="sn">GAIN</span><span class="sv" id="vG">1.00</span></div>
-        <input type="range" id="sG" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP(1)"></div>
-      <div class="sr"><div class="sh"><span class="sn">GAMMA</span><span class="sv" id="vGm">1.00</span></div>
-        <input type="range" id="sGm" min="0.2" max="3.0" step="0.01" value="1.0" oninput="onP(1)"></div>
-      <div class="sr"><div class="sh"><span class="sn">SPREAD</span><span class="sv" id="vSp">1.5</span></div>
-        <input type="range" id="sSp" min="0.5" max="6.0" step="0.1" value="1.5" oninput="onP(1)"></div>
-      <div class="sr"><div class="sh"><span class="sn">DECAY</span><span class="sv" id="vDc">0.00</span></div>
-        <input type="range" id="sDc" min="0.0" max="0.99" step="0.01" value="0.0" oninput="onP(1)"></div>
+    <div class="sc">
+      <div class="lb">DENSITY</div>
+      <div class="sr"><div class="sh"><span class="sn">GAIN</span><span class="sv" id="vG">1.00</span></div><input type="range" id="sG" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
+      <div class="sr"><div class="sh"><span class="sn">GAMMA</span><span class="sv" id="vGm">1.00</span></div><input type="range" id="sGm" min="0.2" max="3.0" step="0.01" value="1.0" oninput="onP()"></div>
     </div>
-
-    <div class="sec">
-      <div class="lbl">RENDERING</div>
-      <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div>
-        <input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP(0)"></div>
-      <div class="sr"><div class="sh"><span class="sn">SMOOTHING</span><span class="sv" id="vSm">0.30</span></div>
-        <input type="range" id="sSm" min="0.0" max="1.0" step="0.01" value="0.3" oninput="onP(0)"></div>
-      <div class="sr" id="rPs"><div class="sh"><span class="sn">PARTICLE SIZE</span><span class="sv" id="vPs">3.0</span></div>
-        <input type="range" id="sPs" min="0.5" max="10.0" step="0.1" value="3.0" oninput="onP(0)"></div>
-      <div class="sr" id="rGl"><div class="sh"><span class="sn">GLOW</span><span class="sv" id="vGl">0.80</span></div>
-        <input type="range" id="sGl" min="0.1" max="3.0" step="0.01" value="0.8" oninput="onP(0)"></div>
-      <div class="sr" id="rLw"><div class="sh"><span class="sn">LINE WEIGHT</span><span class="sv" id="vLw">1.0</span></div>
-        <input type="range" id="sLw" min="0.2" max="4.0" step="0.1" value="1.0" oninput="onP(0)"></div>
-      <div class="sr" id="rLd"><div class="sh"><span class="sn">LINE DENSITY</span><span class="sv" id="vLd">1.00</span></div>
-        <input type="range" id="sLd" min="0.2" max="4.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+    <div class="sc">
+      <div class="lb">RENDERING</div>
+      <div class="sr"><div class="sh"><span class="sn">INTENSITY</span><span class="sv" id="vIn">1.00</span></div><input type="range" id="sIn" min="0.1" max="5.0" step="0.01" value="1.0" oninput="onP()"></div>
+      <div class="sr" id="rPs"><div class="sh"><span class="sn">PARTICLE SIZE</span><span class="sv" id="vPs">2.0</span></div><input type="range" id="sPs" min="0.5" max="8.0" step="0.1" value="2.0" oninput="onP()"></div>
+      <div class="sr" id="rGl"><div class="sh"><span class="sn">GLOW</span><span class="sv" id="vGl">1.00</span></div><input type="range" id="sGl" min="0.1" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
+      <div class="sr" id="rLd"><div class="sh"><span class="sn">LINE DENSITY</span><span class="sv" id="vLd">1.00</span></div><input type="range" id="sLd" min="0.2" max="4.0" step="0.01" value="1.0" oninput="onP()"></div>
     </div>
-
-    <div class="sec">
-      <div class="lbl">COLOR</div>
-      <div class="crow">
-        <div class="csw" id="cSw" style="background:#fff"><input type="color" id="cPk" value="#ffffff" oninput="onC(this.value)"></div>
-        <span class="sn">TINT</span>
-      </div>
-      <div class="sr"><div class="sh"><span class="sn">SATURATION</span><span class="sv" id="vSa">0.00</span></div>
-        <input type="range" id="sSa" min="0.0" max="1.0" step="0.01" value="0.0" oninput="onP(0)"></div>
-      <div class="sr"><div class="sh"><span class="sn">BRIGHTNESS</span><span class="sv" id="vBr">1.00</span></div>
-        <input type="range" id="sBr" min="0.1" max="3.0" step="0.01" value="1.0" oninput="onP(0)"></div>
+    <div class="sc">
+      <div class="lb">COLOR</div>
+      <div class="crow"><div class="csw" id="cSw" style="background:#fff"><input type="color" id="cPk" value="#ffffff" oninput="onC(this.value)"></div><span class="sn">GLOW COLOR</span></div>
     </div>
-
-    <div class="sec">
-      <div class="lbl">OUTPUT</div>
-      <div class="sr"><div class="sh"><span class="sn">RENDER SCALE</span><span class="sv" id="vRs">2x</span></div>
-        <input type="range" id="sRs" min="1" max="8" step="1" value="2" oninput="onRs()"></div>
-      <button class="abtn" onclick="toggleSrc()">SHOW SOURCE</button>
-      <button class="abtn hl" onclick="renderHires()">HI-RES RENDER</button>
-      <button class="abtn" onclick="loadImg()">LOAD IMAGE</button>
-      <button class="abtn" onclick="savePng()">SAVE PNG</button>
+    <div class="sc">
+      <div class="lb">GRID</div>
+      <div class="sr"><div class="sh"><span class="sn">GRID OPACITY</span><span class="sv" id="vGr">0.15</span></div><input type="range" id="sGr" min="0.0" max="0.5" step="0.01" value="0.15" oninput="onP()"></div>
     </div>
-
-    <div id="statusBar"></div>
+    <div class="sc">
+      <div class="lb">OUTPUT</div>
+      <div class="sr"><div class="sh"><span class="sn">RENDER SCALE</span><span class="sv" id="vRs">2x</span></div><input type="range" id="sRs" min="1" max="4" step="1" value="2" oninput="onRs()"></div>
+      <button class="ab" onclick="togSrc()">SHOW SOURCE</button>
+      <button class="ab hl" onclick="renderHi()">HI-RES RENDER</button>
+      <button class="ab" onclick="loadImg()">LOAD IMAGE</button>
+      <button class="ab" onclick="savePng()">SAVE PNG</button>
+    </div>
+    <div id="stB"></div>
   </div>
 </div>
-
 <input type="file" id="fIn" accept="image/*" style="display:none">
-
 <script>
 // ======================================================
-// DENSITY FIELD v3
-// Source image = information source, not material
-// Output resolution independent of input resolution
-// All drawing done at output resolution via Canvas 2D
+// DENSITY FIELD v4 — Full GPU
+// Density computed PER-PIXEL in fragment shader
+// No CPU density map, no banding from texture resolution
+// Source image = information only, never drawn directly
 // ======================================================
 
-var canvas, ctx, canvasWrap;
-var srcImg = null;    // HTMLImageElement
+var glCanvas, gl, cWrap;
+var srcTex = null;
 var srcW = 0, srcH = 0;
-var srcPixels = null; // Uint8ClampedArray from source
-
-// Extracted source data (per source pixel)
-var srcLum = null;    // Float32Array [srcW * srcH] luminance
-var srcR = null;      // Float32Array [srcW * srcH] normalized RGB
-var srcG_ = null;
-var srcB_ = null;
-
+var srcImg = null;
 var curMode = 0;
-var showSrc = false;
+var showingSrc = false;
 var renderScale = 2;
+var quadBuf = null;
+var programs = [];
 
 var P = {
-  gain:1.0, gamma:1.0, spread:1.5, decay:0.0,
-  intensity:1.0, smooth:0.3,
-  psize:3.0, glow:0.8,
-  lw:1.0, ld:1.0,
-  tintR:1.0, tintG:1.0, tintB:1.0,
-  sat:0.0, bright:1.0
+  gain:1.0, gamma:1.0,
+  intensity:1.0,
+  psize:2.0, glow:1.0,
+  ld:1.0,
+  tR:1.0, tG:1.0, tB:1.0,
+  gridOp:0.15
 };
 
-// ===================== INIT =====================
+// ===================== SHADERS =====================
 
-function init() {
-  canvas = document.getElementById('renderCanvas');
-  ctx = canvas.getContext('2d');
-  canvasWrap = document.getElementById('canvasWrap');
+var vsrc = [
+  'attribute vec2 a_pos;',
+  'varying vec2 v_uv;',
+  'void main(){',
+  '  v_uv = a_pos * 0.5 + 0.5;',
+  '  gl_Position = vec4(a_pos, 0.0, 1.0);',
+  '}'
+].join('\n');
+
+// Core density function: shared across all modes
+// For each output pixel (u,v), scan the source column at u
+// and accumulate: how many source pixels in that column
+// have a luminance that maps near this v position?
+// This is computed entirely in the shader = no banding!
+var densityFunc = [
+  'uniform sampler2D u_src;',
+  'uniform vec2 u_srcSize;',    // source width, height
+  'uniform float u_gain;',
+  'uniform float u_gamma;',
+  '',
+  '// Compute density at output UV coordinate',
+  '// This scans the entire source column for this x position',
+  'float getDensity(vec2 uv) {',
+  '  float srcH = u_srcSize.y;',
+  '  float density = 0.0;',
+  '',
+  '  // Number of samples = source height (scan every pixel in column)',
+  '  // For performance, step by 1 source pixel',
+  '  float invSrcH = 1.0 / srcH;',
+  '',
+  '  for (float i = 0.0; i < 4096.0; i += 1.0) {',
+  '    if (i >= srcH) break;',
+  '    float sy = (i + 0.5) * invSrcH;',
+  '',
+  '    // Read source pixel luminance at (uv.x, sy)',
+  '    vec4 texel = texture2D(u_src, vec2(uv.x, sy));',
+  '    float lum = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));',
+  '    lum = clamp(lum * u_gain, 0.0, 1.0);',
+  '    lum = pow(lum, u_gamma);',
+  '',
+  '    // This source pixel maps to Y position (1-lum) in output',
+  '    float targetY = 1.0 - lum;',
+  '',
+  '    // How close is our output Y to this target?',
+  '    float dist = abs(uv.y - targetY);',
+  '',
+  '    // Smooth kernel: Gaussian contribution',
+  '    // Width scales with 1/srcH so each pixel contributes a smooth bump',
+  '    float sigma = 1.5 * invSrcH;',
+  '    density += exp(-dist * dist / (2.0 * sigma * sigma));',
+  '  }',
+  '',
+  '  // Normalize by source height',
+  '  density *= invSrcH;',
+  '  return density;',
+  '}',
+  ''
+].join('\n');
+
+// Mode 0: Classic — density drives brightness directly
+var frag0 = [
+  'precision highp float;',
+  'varying vec2 v_uv;',
+  densityFunc,
+  'uniform float u_intensity;',
+  'uniform vec3 u_color;',
+  'uniform float u_gridOp;',
+  '',
+  'void main(){',
+  '  float d = getDensity(v_uv);',
+  '  d = d * u_intensity;',
+  '',
+  '  // Tone mapping: soft clamp for natural look',
+  '  d = d / (d + 0.3);',
+  '',
+  '  vec3 col = u_color * d;',
+  '',
+  '  // Grid lines',
+  '  if (u_gridOp > 0.001) {',
+  '    float gx = step(0.998, fract(v_uv.x * 10.0)) * u_gridOp * 0.5;',
+  '    float gy = step(0.998, fract(v_uv.y * 10.0)) * u_gridOp * 0.5;',
+  '    float gx2 = step(0.999, fract(v_uv.x * 50.0)) * u_gridOp * 0.15;',
+  '    float gy2 = step(0.999, fract(v_uv.y * 50.0)) * u_gridOp * 0.15;',
+  '    col += vec3(gx + gy + gx2 + gy2);',
+  '  }',
+  '',
+  '  gl_FragColor = vec4(col, 1.0);',
+  '}'
+].join('\n');
+
+// Mode 1: Particle — density creates glowing dots
+var frag1 = [
+  'precision highp float;',
+  'varying vec2 v_uv;',
+  densityFunc,
+  'uniform float u_intensity;',
+  'uniform vec3 u_color;',
+  'uniform float u_psize;',
+  'uniform float u_glow;',
+  'uniform float u_gridOp;',
+  'uniform vec2 u_outSize;',
+  '',
+  'float hash(vec2 p){',
+  '  p=fract(p*vec2(123.34,456.21));',
+  '  p+=dot(p,p+45.32);',
+  '  return fract(p.x*p.y);',
+  '}',
+  '',
+  'void main(){',
+  '  float d = getDensity(v_uv);',
+  '  vec2 px = 1.0 / u_outSize;',
+  '',
+  '  // Base glow from density',
+  '  float base = d * u_intensity * 0.3;',
+  '  base = base / (base + 0.2);',
+  '',
+  '  // Particle layer: grid of cells, jittered particles',
+  '  float cellPx = u_psize * 3.0;',
+  '  vec2 cellSize = vec2(cellPx) * px;',
+  '  vec2 cellIdx = floor(v_uv / cellSize);',
+  '  vec3 acc = vec3(0.0);',
+  '',
+  '  for(int dy=-1;dy<=1;dy++){',
+  '    for(int dx=-1;dx<=1;dx++){',
+  '      vec2 nc = cellIdx + vec2(float(dx),float(dy));',
+  '      float rx = hash(nc);',
+  '      float ry = hash(nc + vec2(7.0,13.0));',
+  '      vec2 pUV = (nc + vec2(rx, ry)) * cellSize;',
+  '',
+  '      if(pUV.x<0.0||pUV.x>1.0||pUV.y<0.0||pUV.y>1.0) continue;',
+  '',
+  '      float pd = getDensity(pUV);',
+  '      if(pd < 0.01) continue;',
+  '',
+  '      vec2 diff = (v_uv - pUV) / px;',
+  '      float dist2 = dot(diff, diff);',
+  '      float r = u_psize * (0.3 + pd * 0.7);',
+  '      float falloff = exp(-dist2 / (r * r * u_glow));',
+  '',
+  '      acc += u_color * pd * falloff * u_intensity * 0.5;',
+  '    }',
+  '  }',
+  '',
+  '  vec3 col = u_color * base + acc;',
+  '',
+  '  if(u_gridOp > 0.001){',
+  '    float g = step(0.998, fract(v_uv.x*10.0))*u_gridOp*0.5',
+  '           + step(0.998, fract(v_uv.y*10.0))*u_gridOp*0.5;',
+  '    col += vec3(g);',
+  '  }',
+  '',
+  '  gl_FragColor = vec4(col, 1.0);',
+  '}'
+].join('\n');
+
+// Mode 2: Fiber — contour lines of density field
+var frag2 = [
+  'precision highp float;',
+  'varying vec2 v_uv;',
+  densityFunc,
+  'uniform float u_intensity;',
+  'uniform vec3 u_color;',
+  'uniform float u_ld;',
+  'uniform float u_gridOp;',
+  'uniform vec2 u_outSize;',
+  '',
+  'void main(){',
+  '  float d = getDensity(v_uv);',
+  '  vec2 px = 1.0 / u_outSize;',
+  '',
+  '  // Gradient via finite differences of density',
+  '  float dR = getDensity(v_uv + vec2(px.x * 2.0, 0.0));',
+  '  float dL = getDensity(v_uv - vec2(px.x * 2.0, 0.0));',
+  '  float dU = getDensity(v_uv - vec2(0.0, px.y * 2.0));',
+  '  float dD = getDensity(v_uv + vec2(0.0, px.y * 2.0));',
+  '  float gx = dR - dL;',
+  '  float gy = dD - dU;',
+  '  float grad = length(vec2(gx, gy));',
+  '',
+  '  // Contour lines',
+  '  float levels = 25.0 * u_ld;',
+  '  float scaled = d * levels;',
+  '  float f = fract(scaled);',
+  '  float distToLine = min(f, 1.0 - f);',
+  '  float pixDist = distToLine / (grad * levels + 0.0001);',
+  '',
+  '  float line = 1.0 - smoothstep(0.0, 1.5, pixDist);',
+  '  float val = line * d * u_intensity * (0.3 + grad * 15.0);',
+  '  val = val / (val + 0.25);',
+  '',
+  '  vec3 col = u_color * val;',
+  '',
+  '  if(u_gridOp > 0.001){',
+  '    float g = step(0.998, fract(v_uv.x*10.0))*u_gridOp*0.5',
+  '           + step(0.998, fract(v_uv.y*10.0))*u_gridOp*0.5;',
+  '    col += vec3(g);',
+  '  }',
+  '',
+  '  gl_FragColor = vec4(col, 1.0);',
+  '}'
+].join('\n');
+
+// ===================== GL SETUP =====================
+
+function initGL() {
+  glCanvas = document.getElementById('gl');
+  cWrap = document.getElementById('cWrap');
+
+  gl = glCanvas.getContext('webgl', {
+    alpha:false, antialias:false, preserveDrawingBuffer:true, premultipliedAlpha:false
+  });
+  if (!gl) { alert('WebGL required'); return; }
+
+  quadBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+
+  programs[0] = mkProg(vsrc, frag0);
+  programs[1] = mkProg(vsrc, frag1);
+  programs[2] = mkProg(vsrc, frag2);
 
   fitCanvas();
-  window.addEventListener('resize', function() { fitCanvas(); quickRender(); });
-  setupDrop();
-  setupFile();
+  window.addEventListener('resize', function(){ fitCanvas(); render(); });
+  setupIO();
   updateVis();
+  render();
+}
+
+function mkShader(type, src) {
+  var s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+}
+
+function mkProg(vs, fs) {
+  var v = mkShader(gl.VERTEX_SHADER, vs);
+  var f = mkShader(gl.FRAGMENT_SHADER, fs);
+  if (!v || !f) return null;
+  var p = gl.createProgram();
+  gl.attachShader(p, v);
+  gl.attachShader(p, f);
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(p));
+    return null;
+  }
+  return p;
 }
 
 function fitCanvas() {
-  var rect = canvasWrap.getBoundingClientRect();
+  var rect = cWrap.getBoundingClientRect();
   var aw = Math.round(rect.width);
   var ah = Math.round(rect.height);
 
   if (srcW > 0 && srcH > 0) {
     var aspect = srcW / srcH;
     var cw, ch;
-    if (aw / ah > aspect) {
-      ch = ah; cw = Math.round(ah * aspect);
-    } else {
-      cw = aw; ch = Math.round(aw / aspect);
-    }
-    canvas.style.width = cw + 'px';
-    canvas.style.height = ch + 'px';
-    // Canvas pixel size = display size (preview quality)
-    // Hi-res render uses separate offscreen canvas
-    canvas.width = cw;
-    canvas.height = ch;
+    if (aw / ah > aspect) { ch = ah; cw = Math.round(ah * aspect); }
+    else { cw = aw; ch = Math.round(aw / aspect); }
+    glCanvas.style.width = cw + 'px';
+    glCanvas.style.height = ch + 'px';
+    // Use DPR for sharp preview
+    var dpr = window.devicePixelRatio || 1;
+    glCanvas.width = Math.round(cw * dpr);
+    glCanvas.height = Math.round(ch * dpr);
   } else {
-    canvas.style.width = aw + 'px';
-    canvas.style.height = ah + 'px';
-    canvas.width = aw;
-    canvas.height = ah;
+    glCanvas.style.width = aw + 'px';
+    glCanvas.style.height = ah + 'px';
+    glCanvas.width = aw;
+    glCanvas.height = ah;
   }
 }
 
-// ===================== SOURCE EXTRACTION =====================
-// Extract all information from source image into arrays
-// This data drives all rendering - the source image itself is never drawn
+// ===================== RENDER =====================
 
-function extractSource(img) {
-  srcW = img.naturalWidth || img.width;
-  srcH = img.naturalHeight || img.height;
+function render() {
+  var w = glCanvas.width;
+  var h = glCanvas.height;
 
-  var tc = document.createElement('canvas');
-  tc.width = srcW; tc.height = srcH;
-  var tctx = tc.getContext('2d');
-  tctx.drawImage(img, 0, 0);
-  var id = tctx.getImageData(0, 0, srcW, srcH);
-  srcPixels = id.data;
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0,0,0,1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
-  var n = srcW * srcH;
-  srcLum = new Float32Array(n);
-  srcR = new Float32Array(n);
-  srcG_ = new Float32Array(n);
-  srcB_ = new Float32Array(n);
+  if (!srcTex || srcW === 0) return;
 
-  for (var i = 0; i < n; i++) {
-    var r = srcPixels[i * 4] / 255.0;
-    var g = srcPixels[i * 4 + 1] / 255.0;
-    var b = srcPixels[i * 4 + 2] / 255.0;
-    srcR[i] = r;
-    srcG_[i] = g;
-    srcB_[i] = b;
-    srcLum[i] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  var prog = programs[curMode];
+  if (!prog) return;
+
+  gl.useProgram(prog);
+
+  var aPos = gl.getAttribLocation(prog, 'a_pos');
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.uniform1i(gl.getUniformLocation(prog, 'u_src'), 0);
+
+  gl.uniform2f(gl.getUniformLocation(prog, 'u_srcSize'), srcW, srcH);
+  gl.uniform1f(gl.getUniformLocation(prog, 'u_gain'), P.gain);
+  gl.uniform1f(gl.getUniformLocation(prog, 'u_gamma'), P.gamma);
+  gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), P.intensity);
+  gl.uniform3f(gl.getUniformLocation(prog, 'u_color'), P.tR, P.tG, P.tB);
+  gl.uniform1f(gl.getUniformLocation(prog, 'u_gridOp'), P.gridOp);
+
+  if (curMode === 1) {
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_psize'), P.psize);
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_glow'), P.glow);
+    gl.uniform2f(gl.getUniformLocation(prog, 'u_outSize'), w, h);
+  }
+  if (curMode === 2) {
+    gl.uniform1f(gl.getUniformLocation(prog, 'u_ld'), P.ld);
+    gl.uniform2f(gl.getUniformLocation(prog, 'u_outSize'), w, h);
   }
 
-  // Set preview
-  document.getElementById('srcPreview').src = tc.toDataURL();
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-// ===================== DENSITY ACCUMULATION =====================
-// Builds density map at ANY output resolution
-// Each source column maps to output columns proportionally
-// Each source pixel contributes to output Y based on luminance
+// ===================== HI-RES RENDER =====================
 
-function buildDensity(outW, outH) {
-  var gain = P.gain;
-  var gamma = P.gamma;
-  var spread = P.spread;
-  var decay = P.decay;
-
-  // Accumulation height: high multiplier for anti-banding
-  var AH = outH * 4;
-  // Allocate accumulation buffer: outW columns, AH rows
-  var accum = new Float32Array(outW * AH);
-
-  // Sigma for Gaussian spread (in AH pixels)
-  var sigma = Math.max(spread * (AH / outH) * 0.5, 0.5);
-  var kRad = Math.min(Math.ceil(sigma * 3), 15);
-  var kern = [];
-  var kSum = 0;
-  for (var k = -kRad; k <= kRad; k++) {
-    var w = Math.exp(-(k * k) / (2.0 * sigma * sigma));
-    kern.push(w);
-    kSum += w;
-  }
-  for (var k = 0; k < kern.length; k++) kern[k] /= kSum;
-
-  // Map each source column to output columns
-  // Source pixel (sx, sy) contributes to output columns [outX_start, outX_end)
-  var colScale = outW / srcW;
-
-  for (var sx = 0; sx < srcW; sx++) {
-    // Output column range for this source column
-    var ox0 = sx * colScale;
-    var ox1 = (sx + 1) * colScale;
-    var iox0 = Math.floor(ox0);
-    var iox1 = Math.ceil(ox1);
-    if (iox1 > outW) iox1 = outW;
-
-    for (var sy = 0; sy < srcH; sy++) {
-      var idx = sy * srcW + sx;
-      var lum = srcLum[idx] * gain;
-      if (lum > 1.0) lum = 1.0;
-      lum = Math.pow(lum, gamma);
-
-      // Map to Y in accumulation buffer
-      var mappedY = (1.0 - lum) * (AH - 1);
-      var baseY = Math.round(mappedY);
-
-      // For each output column this source pixel covers
-      for (var ox = iox0; ox < iox1; ox++) {
-        // Weight: how much of this output column does this source column cover
-        var wLo = Math.max(ox, ox0);
-        var wHi = Math.min(ox + 1, ox1);
-        var colWeight = wHi - wLo;
-        if (colWeight <= 0) continue;
-
-        // Distribute with Gaussian kernel
-        var base = ox * AH;
-        for (var k = 0; k < kern.length; k++) {
-          var ky = baseY + (k - kRad);
-          if (ky >= 0 && ky < AH) {
-            accum[base + ky] += kern[k] * colWeight;
-          }
-        }
-      }
-    }
-  }
-
-  // Downsample AH -> outH
-  var density = new Float32Array(outW * outH);
-  var binH = AH / outH;
-
-  for (var ox = 0; ox < outW; ox++) {
-    var aBase = ox * AH;
-    for (var oy = 0; oy < outH; oy++) {
-      var y0 = oy * binH;
-      var y1 = y0 + binH;
-      var iy0 = Math.floor(y0);
-      var iy1 = Math.ceil(y1);
-      if (iy1 > AH) iy1 = AH;
-
-      var sum = 0;
-      for (var ay = iy0; ay < iy1; ay++) {
-        var lo = Math.max(ay, y0);
-        var hi = Math.min(ay + 1, y1);
-        if (hi > lo) sum += accum[aBase + ay] * (hi - lo);
-      }
-      density[oy * outW + ox] = sum / binH;
-    }
-  }
-
-  // Bidirectional decay
-  if (decay > 0.001) {
-    for (var y = 0; y < outH; y++) {
-      var row = y * outW;
-      var prev = 0;
-      for (var x = 0; x < outW; x++) {
-        var v = density[row + x];
-        v = Math.max(v, prev * decay);
-        density[row + x] = v;
-        prev = v;
-      }
-      prev = 0;
-      for (var x = outW - 1; x >= 0; x--) {
-        var v = density[row + x];
-        v = Math.max(v, prev * decay);
-        density[row + x] = v;
-        prev = v;
-      }
-    }
-  }
-
-  // Normalize
-  var mx = 0;
-  for (var i = 0; i < density.length; i++) {
-    if (density[i] > mx) mx = density[i];
-  }
-  if (mx > 0) {
-    var inv = 1.0 / mx;
-    for (var i = 0; i < density.length; i++) density[i] *= inv;
-  }
-
-  return density;
-}
-
-// ===================== COLOR SAMPLING =====================
-// Bilinear sample from source color at fractional coordinates
-
-function sampleColor(fx, fy) {
-  // fx, fy in [0, 1] -> source pixel coords
-  var sx = fx * (srcW - 1);
-  var sy = fy * (srcH - 1);
-  var ix = Math.floor(sx);
-  var iy = Math.floor(sy);
-  var dx = sx - ix;
-  var dy = sy - iy;
-  var ix1 = Math.min(ix + 1, srcW - 1);
-  var iy1 = Math.min(iy + 1, srcH - 1);
-
-  var i00 = iy * srcW + ix;
-  var i10 = iy * srcW + ix1;
-  var i01 = iy1 * srcW + ix;
-  var i11 = iy1 * srcW + ix1;
-
-  var w00 = (1 - dx) * (1 - dy);
-  var w10 = dx * (1 - dy);
-  var w01 = (1 - dx) * dy;
-  var w11 = dx * dy;
-
-  return {
-    r: srcR[i00]*w00 + srcR[i10]*w10 + srcR[i01]*w01 + srcR[i11]*w11,
-    g: srcG_[i00]*w00 + srcG_[i10]*w10 + srcG_[i01]*w01 + srcG_[i11]*w11,
-    b: srcB_[i00]*w00 + srcB_[i10]*w10 + srcB_[i01]*w01 + srcB_[i11]*w11
-  };
-}
-
-// ===================== RENDERERS =====================
-
-// Common: apply color params to a base brightness
-function applyColor(bright, fx, fy) {
-  var c = sampleColor(fx, fy);
-  var sat = P.sat;
-  var tR = P.tintR, tG = P.tintG, tB = P.tintB;
-  var br = P.bright;
-
-  // Mix: white * bright -> source color * bright -> tint * bright
-  var r = bright, g = bright, b = bright;
-  if (sat > 0.001) {
-    r = r * (1 - sat) + c.r * bright * 1.5 * sat;
-    g = g * (1 - sat) + c.g * bright * 1.5 * sat;
-    b = b * (1 - sat) + c.b * bright * 1.5 * sat;
-    r = r * (1 - sat * 0.3) + tR * bright * sat * 0.3;
-    g = g * (1 - sat * 0.3) + tG * bright * sat * 0.3;
-    b = b * (1 - sat * 0.3) + tB * bright * sat * 0.3;
-  }
-  r *= br; g *= br; b *= br;
-  return { r: Math.min(r, 1) * 255, g: Math.min(g, 1) * 255, b: Math.min(b, 1) * 255 };
-}
-
-// --- MODE 0: Classic waveform ---
-function renderClassic(outW, outH, density, imageData) {
-  var data = imageData.data;
-  var intensity = P.intensity;
-  var smooth = P.smooth;
-
-  for (var y = 0; y < outH; y++) {
-    for (var x = 0; x < outW; x++) {
-      var i = y * outW + x;
-      var d = density[i];
-
-      // Smoothing: average with neighbors
-      if (smooth > 0.01) {
-        var s = 0, cnt = 0;
-        if (x > 0) { s += density[i - 1]; cnt++; }
-        if (x < outW - 1) { s += density[i + 1]; cnt++; }
-        if (y > 0) { s += density[i - outW]; cnt++; }
-        if (y < outH - 1) { s += density[i + outW]; cnt++; }
-        d = d * (1 - smooth) + (s / cnt) * smooth;
-      }
-
-      d = d * intensity;
-      if (d > 1) d = 1;
-
-      var fx = x / outW;
-      var fy = y / outH;
-      var col = applyColor(d, fx, fy);
-
-      var pi = i * 4;
-      data[pi] = col.r;
-      data[pi + 1] = col.g;
-      data[pi + 2] = col.b;
-      data[pi + 3] = 255;
-    }
-  }
-}
-
-// --- MODE 1: Particle (additive) ---
-function renderParticle(outW, outH, density, imageData) {
-  var data = imageData.data;
-  // Clear to black
-  for (var i = 0; i < data.length; i += 4) {
-    data[i] = 0; data[i+1] = 0; data[i+2] = 0; data[i+3] = 255;
-  }
-
-  var intensity = P.intensity;
-  var psize = P.psize;
-  var glow = P.glow;
-
-  // Place particles based on density
-  // More particles where density is high
-  // Particle count proportional to output resolution
-  var totalParticles = Math.round(outW * outH * 0.3);
-  var maxPart = Math.min(totalParticles, 2000000);
-
-  // Accumulator (float)
-  var accR = new Float32Array(outW * outH);
-  var accG = new Float32Array(outW * outH);
-  var accB = new Float32Array(outW * outH);
-
-  // Importance sampling: place particles proportional to density
-  // Build CDF for importance sampling
-  var totalDensity = 0;
-  for (var i = 0; i < density.length; i++) totalDensity += density[i];
-  if (totalDensity < 0.001) return;
-
-  // Simple grid-based particle placement with density modulation
-  var cellSize = Math.max(1, Math.round(psize * 0.8));
-  var gridW = Math.ceil(outW / cellSize);
-  var gridH = Math.ceil(outH / cellSize);
-
-  // Seeded random
-  var seed = 12345;
-  function rng() {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  }
-
-  for (var gy = 0; gy < gridH; gy++) {
-    for (var gx = 0; gx < gridW; gx++) {
-      var cx = (gx + 0.5) * cellSize;
-      var cy = (gy + 0.5) * cellSize;
-      var ix = Math.min(Math.round(cx), outW - 1);
-      var iy = Math.min(Math.round(cy), outH - 1);
-      var d = density[iy * outW + ix];
-
-      if (d < 0.005) continue;
-
-      // Number of particles in this cell proportional to density
-      var nPart = Math.round(d * d * 3) + 1;
-
-      for (var p = 0; p < nPart; p++) {
-        // Jittered position
-        var px = cx + (rng() - 0.5) * cellSize;
-        var py = cy + (rng() - 0.5) * cellSize;
-
-        // Particle radius
-        var radius = psize * (0.3 + d * 0.7) * (0.7 + rng() * 0.6);
-
-        // Color at this position
-        var fx = px / outW;
-        var fy = py / outH;
-        if (fx < 0 || fx > 1 || fy < 0 || fy > 1) continue;
-        var col = applyColor(d * intensity, fx, fy);
-
-        // Stamp Gaussian dot
-        var r2 = radius * radius * glow;
-        var irad = Math.ceil(radius * 2);
-        var x0 = Math.max(0, Math.round(px) - irad);
-        var x1 = Math.min(outW - 1, Math.round(px) + irad);
-        var y0 = Math.max(0, Math.round(py) - irad);
-        var y1 = Math.min(outH - 1, Math.round(py) + irad);
-
-        for (var sy = y0; sy <= y1; sy++) {
-          var dyy = sy - py;
-          for (var sx = x0; sx <= x1; sx++) {
-            var dxx = sx - px;
-            var dist2 = dxx * dxx + dyy * dyy;
-            var falloff = Math.exp(-dist2 / Math.max(r2, 0.1));
-            var idx = sy * outW + sx;
-            accR[idx] += col.r * falloff * 0.02;
-            accG[idx] += col.g * falloff * 0.02;
-            accB[idx] += col.b * falloff * 0.02;
-          }
-        }
-      }
-    }
-  }
-
-  // Write to imageData
-  for (var i = 0; i < outW * outH; i++) {
-    data[i*4]   = Math.min(255, Math.round(accR[i]));
-    data[i*4+1] = Math.min(255, Math.round(accG[i]));
-    data[i*4+2] = Math.min(255, Math.round(accB[i]));
-    data[i*4+3] = 255;
-  }
-}
-
-// --- MODE 2: Line / Fiber ---
-function renderLine(outW, outH, density, imageData) {
-  var data = imageData.data;
-  var intensity = P.intensity;
-  var lw = P.lw;
-  var ld = P.ld;
-  var smooth = P.smooth;
-
-  for (var y = 0; y < outH; y++) {
-    for (var x = 0; x < outW; x++) {
-      var i = y * outW + x;
-      var d = density[i];
-
-      // Smoothed density
-      if (smooth > 0.01) {
-        var s = 0, cnt = 0;
-        if (x > 0) { s += density[i - 1]; cnt++; }
-        if (x < outW - 1) { s += density[i + 1]; cnt++; }
-        if (y > 0) { s += density[i - outW]; cnt++; }
-        if (y < outH - 1) { s += density[i + outW]; cnt++; }
-        d = d * (1 - smooth) + (s / cnt) * smooth;
-      }
-
-      // Gradient
-      var dL = (x > 0) ? density[i - 1] : d;
-      var dR = (x < outW - 1) ? density[i + 1] : d;
-      var dU = (y > 0) ? density[i - outW] : d;
-      var dD = (y < outH - 1) ? density[i + outW] : d;
-      var gx = dR - dL;
-      var gy = dD - dU;
-      var grad = Math.sqrt(gx * gx + gy * gy);
-
-      // Contour lines
-      var levels = 30 * ld;
-      var scaled = d * levels;
-      var frac = scaled - Math.floor(scaled);
-      var distToLine = Math.min(frac, 1 - frac);
-
-      // Convert to pixel distance using gradient
-      var pixDist = distToLine / (grad * levels + 0.001);
-
-      // Anti-aliased line
-      var lineVal = 0;
-      if (pixDist < lw) {
-        lineVal = 1.0 - pixDist / lw;
-      }
-
-      // Modulate by density and gradient
-      var val = lineVal * d * intensity * (0.4 + grad * 12.0);
-      if (val > 1) val = 1;
-
-      var fx = x / outW;
-      var fy = y / outH;
-      var col = applyColor(val, fx, fy);
-
-      var pi = i * 4;
-      data[pi] = col.r;
-      data[pi + 1] = col.g;
-      data[pi + 2] = col.b;
-      data[pi + 3] = 255;
-    }
-  }
-}
-
-// ===================== RENDER DISPATCH =====================
-
-// Quick render: at display resolution (preview)
-function quickRender() {
-  if (!srcLum) {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    return;
-  }
-
-  var w = canvas.width;
-  var h = canvas.height;
-  var t0 = performance.now();
-
-  var density = buildDensity(w, h);
-  var imageData = ctx.createImageData(w, h);
-
-  if (curMode === 0) renderClassic(w, h, density, imageData);
-  else if (curMode === 1) renderParticle(w, h, density, imageData);
-  else renderLine(w, h, density, imageData);
-
-  ctx.putImageData(imageData, 0, 0);
-
-  var dt = Math.round(performance.now() - t0);
-  document.getElementById('hInfo').textContent =
-    srcW + 'x' + srcH + ' → ' + w + 'x' + h + '  ' + dt + 'ms';
-}
-
-// Hi-res render: at source * scale resolution
-function renderHires() {
-  if (!srcLum) return;
+function renderHi() {
+  if (!srcTex || srcW === 0) return;
 
   var scale = renderScale;
-  // Output at source aspect ratio, scaled up
-  var outW = srcW * scale;
-  var outH = srcH * scale;
+  var outW = Math.min(srcW * scale, 8192);
+  var outH = Math.min(srcH * scale, 8192);
 
-  // Cap at reasonable size
-  var maxDim = 8000;
-  if (outW > maxDim || outH > maxDim) {
-    var s = maxDim / Math.max(outW, outH);
-    outW = Math.round(outW * s);
-    outH = Math.round(outH * s);
-  }
+  // Check max texture/viewport size
+  var maxSize = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  outW = Math.min(outW, maxSize[0]);
+  outH = Math.min(outH, maxSize[1]);
 
-  showProgress(true, 'BUILDING DENSITY... ' + outW + 'x' + outH);
+  // Save current state
+  var oldW = glCanvas.width;
+  var oldH = glCanvas.height;
+  var oldSW = glCanvas.style.width;
+  var oldSH = glCanvas.style.height;
 
-  // Use setTimeout to let UI update
-  setTimeout(function() {
-    var t0 = performance.now();
+  // Resize to hi-res
+  glCanvas.width = outW;
+  glCanvas.height = outH;
+  render();
 
-    var density = buildDensity(outW, outH);
-    showProgress(true, 'RENDERING MODE ' + (curMode + 1) + '...');
+  // Capture
+  var dataURL = glCanvas.toDataURL('image/png');
 
-    setTimeout(function() {
-      var offCanvas = document.createElement('canvas');
-      offCanvas.width = outW;
-      offCanvas.height = outH;
-      var offCtx = offCanvas.getContext('2d');
-      var imageData = offCtx.createImageData(outW, outH);
+  // Restore
+  glCanvas.width = oldW;
+  glCanvas.height = oldH;
+  glCanvas.style.width = oldSW;
+  glCanvas.style.height = oldSH;
+  render();
 
-      if (curMode === 0) renderClassic(outW, outH, density, imageData);
-      else if (curMode === 1) renderParticle(outW, outH, density, imageData);
-      else renderLine(outW, outH, density, imageData);
+  // Show overlay
+  document.getElementById('hiImg').src = dataURL;
+  document.getElementById('hiOv').classList.add('show');
+  window._hiData = dataURL;
 
-      offCtx.putImageData(imageData, 0, 0);
-
-      var dt = Math.round(performance.now() - t0);
-      showProgress(false);
-
-      // Show in overlay
-      var hiImg = document.getElementById('hiresImg');
-      hiImg.src = offCanvas.toDataURL('image/png');
-      document.getElementById('hiresOv').classList.add('show');
-
-      // Store for save
-      window._hiresDataURL = hiImg.src;
-      window._hiresInfo = outW + 'x' + outH + ' in ' + dt + 'ms';
-
-      document.getElementById('hInfo').textContent = 'HI-RES: ' + outW + 'x' + outH + '  ' + dt + 'ms';
-    }, 30);
-  }, 30);
+  document.getElementById('hI').textContent = 'HI-RES: ' + outW + 'x' + outH;
 }
 
-function closeHires() {
-  document.getElementById('hiresOv').classList.remove('show');
-}
-
-function showProgress(show, text) {
-  var el = document.getElementById('progWrap');
-  if (show) {
-    el.classList.add('show');
-    document.getElementById('progText').textContent = text || 'RENDERING...';
-  } else {
-    el.classList.remove('show');
-  }
+function closeHi() {
+  document.getElementById('hiOv').classList.remove('show');
 }
 
 // ===================== IMAGE LOADING =====================
 
 function processImg(img) {
   srcImg = img;
-  extractSource(img);
+  srcW = img.naturalWidth || img.width;
+  srcH = img.naturalHeight || img.height;
+
+  // Upload as texture
+  if (!srcTex) srcTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  // Preview source
+  var tc = document.createElement('canvas');
+  tc.width = srcW; tc.height = srcH;
+  tc.getContext('2d').drawImage(img, 0, 0);
+  document.getElementById('srcPrev').src = tc.toDataURL();
+
+  document.getElementById('drOv').classList.add('hidden');
   fitCanvas();
-  document.getElementById('dropOv').classList.add('hidden');
-  quickRender();
+  render();
+
+  document.getElementById('hI').textContent = srcW + 'x' + srcH;
 }
 
 function loadImg() { document.getElementById('fIn').click(); }
 
-function setupFile() {
+function setupIO() {
   document.getElementById('fIn').addEventListener('change', function(e) {
-    var f = e.target.files[0];
-    if (!f) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
+    var f = e.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function(ev) {
       var img = new Image();
       img.onload = function() { processImg(img); };
       img.src = ev.target.result;
     };
-    reader.readAsDataURL(f);
+    r.readAsDataURL(f);
   });
-  document.getElementById('dropOv').addEventListener('click', function() { loadImg(); });
-}
-
-function setupDrop() {
+  document.getElementById('drOv').addEventListener('click', function() { loadImg(); });
   var m = document.getElementById('main');
   m.addEventListener('dragover', function(e) { e.preventDefault(); });
   m.addEventListener('drop', function(e) {
     e.preventDefault();
     var f = e.dataTransfer.files[0];
     if (!f || !f.type.match('image.*')) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
+    var r = new FileReader();
+    r.onload = function(ev) {
       var img = new Image();
       img.onload = function() { processImg(img); };
       img.src = ev.target.result;
     };
-    reader.readAsDataURL(f);
+    r.readAsDataURL(f);
+  });
+  document.getElementById('hiOv').addEventListener('click', function(e) {
+    if (e.target === this || e.target === document.getElementById('hiImg')) closeHi();
   });
 }
 
 // ===================== UI =====================
 
-function setMode(m) {
+function setM(m) {
   curMode = m;
-  for (var i = 0; i < 3; i++) document.getElementById('m' + i).classList.remove('active');
-  document.getElementById('m' + m).classList.add('active');
+  for (var i = 0; i < 3; i++) document.getElementById('m'+i).classList.remove('a');
+  document.getElementById('m'+m).classList.add('a');
   updateVis();
-  quickRender();
+  render();
 }
 
 function updateVis() {
-  document.getElementById('rPs').style.display = (curMode === 1) ? '' : 'none';
-  document.getElementById('rGl').style.display = (curMode === 1) ? '' : 'none';
-  document.getElementById('rLw').style.display = (curMode === 2) ? '' : 'none';
-  document.getElementById('rLd').style.display = (curMode === 2) ? '' : 'none';
+  document.getElementById('rPs').style.display = curMode === 1 ? '' : 'none';
+  document.getElementById('rGl').style.display = curMode === 1 ? '' : 'none';
+  document.getElementById('rLd').style.display = curMode === 2 ? '' : 'none';
 }
 
-function onP(rebuild) {
+function onP() {
   P.gain = parseFloat(document.getElementById('sG').value);
   P.gamma = parseFloat(document.getElementById('sGm').value);
-  P.spread = parseFloat(document.getElementById('sSp').value);
-  P.decay = parseFloat(document.getElementById('sDc').value);
   P.intensity = parseFloat(document.getElementById('sIn').value);
-  P.smooth = parseFloat(document.getElementById('sSm').value);
   P.psize = parseFloat(document.getElementById('sPs').value);
   P.glow = parseFloat(document.getElementById('sGl').value);
-  P.lw = parseFloat(document.getElementById('sLw').value);
   P.ld = parseFloat(document.getElementById('sLd').value);
-  P.sat = parseFloat(document.getElementById('sSa').value);
-  P.bright = parseFloat(document.getElementById('sBr').value);
+  P.gridOp = parseFloat(document.getElementById('sGr').value);
 
   document.getElementById('vG').textContent = P.gain.toFixed(2);
   document.getElementById('vGm').textContent = P.gamma.toFixed(2);
-  document.getElementById('vSp').textContent = P.spread.toFixed(1);
-  document.getElementById('vDc').textContent = P.decay.toFixed(2);
   document.getElementById('vIn').textContent = P.intensity.toFixed(2);
-  document.getElementById('vSm').textContent = P.smooth.toFixed(2);
   document.getElementById('vPs').textContent = P.psize.toFixed(1);
   document.getElementById('vGl').textContent = P.glow.toFixed(2);
-  document.getElementById('vLw').textContent = P.lw.toFixed(1);
   document.getElementById('vLd').textContent = P.ld.toFixed(2);
-  document.getElementById('vSa').textContent = P.sat.toFixed(2);
-  document.getElementById('vBr').textContent = P.bright.toFixed(2);
+  document.getElementById('vGr').textContent = P.gridOp.toFixed(2);
 
-  quickRender();
+  render();
 }
 
 function onC(hex) {
   document.getElementById('cSw').style.background = hex;
-  P.tintR = parseInt(hex.substr(1,2), 16) / 255;
-  P.tintG = parseInt(hex.substr(3,2), 16) / 255;
-  P.tintB = parseInt(hex.substr(5,2), 16) / 255;
-  quickRender();
+  P.tR = parseInt(hex.substr(1,2),16)/255;
+  P.tG = parseInt(hex.substr(3,2),16)/255;
+  P.tB = parseInt(hex.substr(5,2),16)/255;
+  render();
 }
 
 function onRs() {
@@ -869,35 +631,27 @@ function onRs() {
   document.getElementById('vRs').textContent = renderScale + 'x';
 }
 
-function togglePanel() {
-  document.getElementById('panel').classList.toggle('collapsed');
-  document.getElementById('togBtn').classList.toggle('shifted');
-  document.getElementById('canvasWrap').classList.toggle('full');
-  setTimeout(function() { fitCanvas(); quickRender(); }, 250);
+function togPnl() {
+  document.getElementById('pnl').classList.toggle('collapsed');
+  document.getElementById('togB').classList.toggle('shifted');
+  document.getElementById('cWrap').classList.toggle('full');
+  setTimeout(function(){ fitCanvas(); render(); }, 250);
 }
 
-function toggleSrc() {
-  showSrc = !showSrc;
-  var el = document.getElementById('srcPreview');
-  if (showSrc && srcImg) el.classList.add('show');
-  else { el.classList.remove('show'); showSrc = false; }
+function togSrc() {
+  showingSrc = !showingSrc;
+  var el = document.getElementById('srcPrev');
+  if (showingSrc && srcImg) el.classList.add('show');
+  else { el.classList.remove('show'); showingSrc = false; }
 }
 
 function savePng() {
-  // Save hires if available, otherwise canvas
-  var url = window._hiresDataURL || canvas.toDataURL('image/png');
+  var url = window._hiData || glCanvas.toDataURL('image/png');
   var a = document.createElement('a');
-  a.href = url;
-  a.download = 'density-field-' + Date.now() + '.png';
-  a.click();
+  a.href = url; a.download = 'density-field-' + Date.now() + '.png'; a.click();
 }
 
-// Click overlay to close
-document.getElementById('hiresOv').addEventListener('click', function(e) {
-  if (e.target === this || e.target === document.getElementById('hiresImg')) closeHires();
-});
-
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', initGL);
 </script>
 </body>
 </html>
