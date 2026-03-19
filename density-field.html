@@ -5,791 +5,535 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>DENSITY FIELD</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body {
-  width: 100%; height: 100%;
-  background: #0a0a0a;
-  color: #c0c0c0;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  overflow: hidden;
-  touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.app {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100dvh;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  border-bottom: 1px solid #1a1a1a;
-  flex-shrink: 0;
-  min-height: 30px;
-}
-.header-title {
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: #505050;
-}
-.header-info {
-  font-size: 9px;
-  color: #383838;
-  letter-spacing: 1px;
-}
-
-/* Canvas area - reduced to give controls more room */
-.canvas-wrap {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #050505;
-}
-.canvas-wrap canvas { display: block; }
-.source-preview {
-  position: absolute;
-  top: 6px; right: 6px;
-  max-width: 56px; max-height: 56px;
-  border: 1px solid #1e1e1e;
-  opacity: 0.5;
-  display: none;
-  pointer-events: none;
-}
-.empty-state {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: #252525;
-}
-.empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.4; }
-.empty-state .label { font-size: 9px; letter-spacing: 3px; }
-
-/* Controls - more spacious */
-.controls {
-  flex-shrink: 0;
-  padding: 12px 12px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-  border-top: 1px solid #1a1a1a;
-  background: #0c0c0c;
-}
-.cr {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.cl {
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  color: #444;
-  min-width: 42px;
-  text-align: right;
-}
-.cv {
-  font-size: 8px;
-  color: #555;
-  min-width: 32px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  flex: 1;
-  height: 1px;
-  background: #222;
-  outline: none;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  background: #181818;
-  border: 1px solid #3a3a3a;
-}
-.color-section {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.color-section .cl { min-width: 42px; }
-.color-ch {
-  display: flex; align-items: center; gap: 3px; flex: 1;
-}
-.color-ch-label {
-  font-size: 7px; letter-spacing: 1px; min-width: 8px; text-align: center;
-}
-.color-ch-r { color: #775555; }
-.color-ch-g { color: #557755; }
-.color-ch-b { color: #555577; }
-
-/* Mode toggle */
-.mode-row {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
-  align-items: center;
-}
-.mode-label {
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  color: #444;
-  min-width: 42px;
-  text-align: right;
-}
-.mode-btn {
-  padding: 5px 10px;
-  background: #111;
-  border: 1px solid #1e1e1e;
-  color: #444;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 7px;
-  letter-spacing: 1.5px;
-  cursor: pointer;
-}
-.mode-btn.active {
-  border-color: #3a3a3a;
-  color: #888;
-  background: #1a1a1a;
-}
-
-.btn-row {
-  display: flex;
-  gap: 5px;
-}
-.btn {
-  flex: 1;
-  padding: 10px 0;
-  background: #111;
-  border: 1px solid #1e1e1e;
-  color: #555;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 8px;
-  letter-spacing: 2px;
-  text-align: center;
-  cursor: pointer;
-}
-.btn:active { background: #1a1a1a; color: #888; }
-.btn-primary { border-color: #2a2a2a; color: #777; }
-#fileInput { display: none; }
-.grid-overlay {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#0a0a0a;color:#c0c0c0;font-family:'Courier New',Courier,monospace;font-size:12px;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.app{display:flex;flex-direction:column;width:100%;height:100dvh}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-bottom:1px solid #1a1a1a;flex-shrink:0;min-height:28px}
+.ht{font-size:9px;letter-spacing:3px;color:#505050}
+.hi{font-size:8px;color:#383838;letter-spacing:1px}
+.cw{flex:1;min-height:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#050505}
+.cw canvas{display:block}
+.sp{position:absolute;top:5px;right:5px;max-width:50px;max-height:50px;border:1px solid #1a1a1a;opacity:0.4;display:none;pointer-events:none}
+.es{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#222}
+.es .ic{font-size:24px;margin-bottom:6px;opacity:0.4}
+.es .lb{font-size:8px;letter-spacing:3px}
+.ct{flex-shrink:0;padding:10px 10px;padding-bottom:max(10px,env(safe-area-inset-bottom));border-top:1px solid #1a1a1a;background:#0c0c0c}
+.cr{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.cl{font-size:7px;letter-spacing:1.5px;color:#444;min-width:40px;text-align:right}
+.cv{font-size:7px;color:#555;min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+input[type="range"]{-webkit-appearance:none;appearance:none;flex:1;height:1px;background:#222;outline:none}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:#181818;border:1px solid #3a3a3a}
+.cs{display:flex;gap:4px;align-items:center;margin-bottom:7px}
+.cs .cl{min-width:40px}
+.ch{display:flex;align-items:center;gap:2px;flex:1}
+.ccl{font-size:6px;letter-spacing:1px;min-width:7px;text-align:center}
+.ccr{color:#775555}.ccg{color:#557755}.ccb{color:#555577}
+.mr{display:flex;gap:3px;margin-bottom:7px;align-items:center}
+.mb{padding:4px 8px;background:#111;border:1px solid #1e1e1e;color:#3a3a3a;font-family:'Courier New',monospace;font-size:7px;letter-spacing:1px;cursor:pointer}
+.mb.ac{border-color:#3a3a3a;color:#888;background:#1a1a1a}
+.br{display:flex;gap:4px}
+.bt{flex:1;padding:9px 0;background:#111;border:1px solid #1e1e1e;color:#555;font-family:'Courier New',monospace;font-size:7px;letter-spacing:2px;text-align:center;cursor:pointer}
+.bt:active{background:#1a1a1a;color:#888}
+.btp{border-color:#2a2a2a;color:#777}
+#fi{display:none}
+.gov{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.st{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#555;font-size:9px;letter-spacing:2px;display:none;pointer-events:none}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="header">
-    <span class="header-title">DENSITY FIELD</span>
-    <span class="header-info" id="imgInfo">NO IMAGE</span>
+  <div class="hd">
+    <span class="ht">DENSITY FIELD</span>
+    <span class="hi" id="inf">NO IMAGE</span>
   </div>
-  <div class="canvas-wrap" id="canvasWrap">
-    <canvas id="glCanvas"></canvas>
-    <canvas class="grid-overlay" id="gridCanvas"></canvas>
-    <img class="source-preview" id="srcPreview" alt="">
-    <div class="empty-state" id="emptyState">
-      <div class="icon">&#9674;</div>
-      <div class="label">SELECT PHOTO</div>
-    </div>
+  <div class="cw" id="cw">
+    <canvas id="gc"></canvas>
+    <canvas class="gov" id="gv"></canvas>
+    <img class="sp" id="sp" alt="">
+    <div class="es" id="es"><div class="ic">&#9674;</div><div class="lb">SELECT PHOTO</div></div>
+    <div class="st" id="st">RENDERING...</div>
   </div>
-  <div class="controls">
-    <div class="mode-row">
-      <span class="mode-label">MODE</span>
-      <button class="mode-btn active" id="mPoints">POINTS</button>
-      <button class="mode-btn" id="mLines">LINES</button>
+  <div class="ct">
+    <div class="mr">
+      <span class="cl">MODE</span>
+      <button class="mb" id="mP">POINTS</button>
+      <button class="mb ac" id="mL">LINES</button>
     </div>
     <div class="cr">
       <span class="cl">GAMMA</span>
-      <input type="range" id="sGamma" min="0.2" max="3.0" step="0.05" value="1.0">
-      <span class="cv" id="vGamma">1.00</span>
+      <input type="range" id="sGa" min="0.2" max="3.0" step="0.05" value="1.0">
+      <span class="cv" id="vGa">1.00</span>
     </div>
     <div class="cr">
       <span class="cl">WEIGHT</span>
-      <input type="range" id="sWeight" min="0.001" max="0.12" step="0.001" value="0.018">
-      <span class="cv" id="vWeight">0.018</span>
+      <input type="range" id="sWe" min="0.001" max="0.15" step="0.001" value="0.015">
+      <span class="cv" id="vWe">0.015</span>
     </div>
     <div class="cr">
       <span class="cl">SIZE</span>
-      <input type="range" id="sSize" min="0.2" max="3.0" step="0.1" value="0.8">
-      <span class="cv" id="vSize">0.8</span>
+      <input type="range" id="sSz" min="0.2" max="3.0" step="0.1" value="0.7">
+      <span class="cv" id="vSz">0.7</span>
     </div>
     <div class="cr">
       <span class="cl">SUBDIV</span>
-      <input type="range" id="sSubdiv" min="1" max="4" step="1" value="1">
-      <span class="cv" id="vSubdiv">1</span>
+      <input type="range" id="sSu" min="1" max="8" step="1" value="1">
+      <span class="cv" id="vSu">1</span>
     </div>
-    <div class="color-section">
+    <div class="cr">
+      <span class="cl">GLOW</span>
+      <input type="range" id="sGl" min="0" max="1.0" step="0.05" value="0.3">
+      <span class="cv" id="vGl">0.30</span>
+    </div>
+    <div class="cs">
       <span class="cl">COLOR</span>
-      <div class="color-ch">
-        <span class="color-ch-label color-ch-r">R</span>
-        <input type="range" id="sR" min="0" max="2.0" step="0.05" value="1.0">
-      </div>
-      <div class="color-ch">
-        <span class="color-ch-label color-ch-g">G</span>
-        <input type="range" id="sG" min="0" max="2.0" step="0.05" value="1.0">
-      </div>
-      <div class="color-ch">
-        <span class="color-ch-label color-ch-b">B</span>
-        <input type="range" id="sB" min="0" max="2.0" step="0.05" value="1.0">
-      </div>
+      <div class="ch"><span class="ccl ccr">R</span><input type="range" id="sR" min="0" max="2.0" step="0.05" value="1.0"></div>
+      <div class="ch"><span class="ccl ccg">G</span><input type="range" id="sG" min="0" max="2.0" step="0.05" value="1.0"></div>
+      <div class="ch"><span class="ccl ccb">B</span><input type="range" id="sB" min="0" max="2.0" step="0.05" value="1.0"></div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="btnPhoto">PHOTO</button>
-      <button class="btn" id="btnSave">SAVE PNG</button>
+    <div class="br">
+      <button class="bt btp" id="bPh">PHOTO</button>
+      <button class="bt" id="bHQ">HQ RENDER</button>
+      <button class="bt" id="bSv">SAVE</button>
     </div>
   </div>
 </div>
-<input type="file" id="fileInput" accept="image/*">
-
+<input type="file" id="fi" accept="image/*">
 <script>
-(function() {
-  "use strict";
+(function(){
+"use strict";
 
-  /* ---- DOM ---- */
-  var glCanvas   = document.getElementById("glCanvas");
-  var gridCanvas = document.getElementById("gridCanvas");
-  var canvasWrap = document.getElementById("canvasWrap");
-  var emptyState = document.getElementById("emptyState");
-  var srcPreview = document.getElementById("srcPreview");
-  var imgInfo    = document.getElementById("imgInfo");
-  var fileInput  = document.getElementById("fileInput");
-  var btnPhoto   = document.getElementById("btnPhoto");
-  var btnSave    = document.getElementById("btnSave");
+/* Max processing resolution (long edge). Prevents WebGL memory crash on iPhone */
+var MAX_SRC = 1536;
+/* Max total vertices before warning */
+var MAX_VERTS = 12000000;
 
-  var sGamma  = document.getElementById("sGamma");
-  var vGamma  = document.getElementById("vGamma");
-  var sWeight = document.getElementById("sWeight");
-  var vWeight = document.getElementById("vWeight");
-  var sSize   = document.getElementById("sSize");
-  var vSize   = document.getElementById("vSize");
-  var sSubdiv = document.getElementById("sSubdiv");
-  var vSubdiv = document.getElementById("vSubdiv");
-  var sR = document.getElementById("sR");
-  var sG = document.getElementById("sG");
-  var sB = document.getElementById("sB");
-  var mPoints = document.getElementById("mPoints");
-  var mLines  = document.getElementById("mLines");
+var gc=document.getElementById("gc"),gv=document.getElementById("gv");
+var cw=document.getElementById("cw"),es=document.getElementById("es"),sp=document.getElementById("sp");
+var inf=document.getElementById("inf"),fi=document.getElementById("fi"),st=document.getElementById("st");
+var bPh=document.getElementById("bPh"),bHQ=document.getElementById("bHQ"),bSv=document.getElementById("bSv");
+var sGa=document.getElementById("sGa"),vGa=document.getElementById("vGa");
+var sWe=document.getElementById("sWe"),vWe=document.getElementById("vWe");
+var sSz=document.getElementById("sSz"),vSz=document.getElementById("vSz");
+var sSu=document.getElementById("sSu"),vSu=document.getElementById("vSu");
+var sGl=document.getElementById("sGl"),vGl=document.getElementById("vGl");
+var sR=document.getElementById("sR"),sG=document.getElementById("sG"),sB=document.getElementById("sB");
+var mP=document.getElementById("mP"),mL=document.getElementById("mL");
 
-  /* ---- State ---- */
-  var sourceData = null;
-  var sourceW = 0, sourceH = 0;
-  var gl = null, progPoints = null, progLines = null;
-  var pointsBuf = null, linesBuf = null;
-  var pointsCount = 0, linesCount = 0;
-  var dispW = 0, dispH = 0;
-  var needRebuild = true;
-  var rafId = null;
-  var drawMode = "points"; /* "points" or "lines" */
+var sd=null,sW=0,sH=0,origInfo="";
+var gl=null,prog=null,progG=null;
+var lBuf=null,pBuf=null,lCnt=0,pCnt=0;
+var dW=0,dH=0;
+var needBuild=true,rafId=null;
+var mode="lines";
 
-  /* ---- Params ---- */
-  var gamma = 1.0, weight = 0.018, ptSize = 0.8;
-  var subdivLevel = 1;
-  var colorR = 1.0, colorG = 1.0, colorB = 1.0;
+var fbTex=null,fb=null,fbW=0,fbH=0,quadBuf=null;
 
-  /* ---- Uniform locs ---- */
-  var uPS_p = null, uW_p = null, uC_p = null;
-  var uW_l = null, uC_l = null;
+var gamma=1.0,weight=0.015,ptSz=0.7,subdiv=1,glow=0.3;
+var cR=1.0,cG=1.0,cB=1.0;
+var u_ps,u_w,u_cm,u_tex,u_res,u_glow;
 
-  /* ---- Mode toggle ---- */
-  mPoints.onclick = function() {
-    drawMode = "points";
-    mPoints.className = "mode-btn active";
-    mLines.className = "mode-btn";
-    scheduleFrame();
-  };
-  mLines.onclick = function() {
-    drawMode = "lines";
-    mLines.className = "mode-btn active";
-    mPoints.className = "mode-btn";
-    scheduleFrame();
-  };
+/* Mode */
+mP.onclick=function(){mode="points";mP.className="mb ac";mL.className="mb";schedF()};
+mL.onclick=function(){mode="lines";mL.className="mb ac";mP.className="mb";schedF()};
 
-  /* ---- Slider wiring ---- */
-  sGamma.oninput = function() {
-    gamma = parseFloat(this.value);
-    vGamma.textContent = gamma.toFixed(2);
-    needRebuild = true;
-    scheduleFrame();
-  };
-  sWeight.oninput = function() {
-    weight = parseFloat(this.value);
-    vWeight.textContent = weight.toFixed(3);
-    scheduleFrame();
-  };
-  sSize.oninput = function() {
-    ptSize = parseFloat(this.value);
-    vSize.textContent = ptSize.toFixed(1);
-    scheduleFrame();
-  };
-  sSubdiv.oninput = function() {
-    subdivLevel = parseInt(this.value);
-    vSubdiv.textContent = subdivLevel.toString();
-    needRebuild = true;
-    scheduleFrame();
-  };
-  sR.oninput = function() { colorR = parseFloat(this.value); scheduleFrame(); };
-  sG.oninput = function() { colorG = parseFloat(this.value); scheduleFrame(); };
-  sB.oninput = function() { colorB = parseFloat(this.value); scheduleFrame(); };
+/* Sliders */
+sGa.oninput=function(){gamma=parseFloat(this.value);vGa.textContent=gamma.toFixed(2);needBuild=true;schedF()};
+sWe.oninput=function(){weight=parseFloat(this.value);vWe.textContent=weight.toFixed(3);schedF()};
+sSz.oninput=function(){ptSz=parseFloat(this.value);vSz.textContent=ptSz.toFixed(1);schedF()};
+sSu.oninput=function(){subdiv=parseInt(this.value);vSu.textContent=subdiv.toString();needBuild=true;schedF()};
+sGl.oninput=function(){glow=parseFloat(this.value);vGl.textContent=glow.toFixed(2);schedF()};
+sR.oninput=function(){cR=parseFloat(this.value);schedF()};
+sG.oninput=function(){cG=parseFloat(this.value);schedF()};
+sB.oninput=function(){cB=parseFloat(this.value);schedF()};
 
-  function scheduleFrame() {
-    if (rafId !== null) return;
-    rafId = requestAnimationFrame(function() {
-      rafId = null;
-      if (!sourceData) return;
-      if (needRebuild) {
-        needRebuild = false;
-        buildVertices();
-      }
-      render();
-    });
-  }
-
-  /* ---- Photo ---- */
-  btnPhoto.onclick = function() { fileInput.click(); };
-  fileInput.onchange = function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var img = new Image();
-      img.onload = function() { loadSource(img); };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  function loadSource(img) {
-    sourceW = img.naturalWidth;
-    sourceH = img.naturalHeight;
-    var oc = document.createElement("canvas");
-    oc.width = sourceW; oc.height = sourceH;
-    var ctx = oc.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    sourceData = ctx.getImageData(0, 0, sourceW, sourceH);
-    srcPreview.src = oc.toDataURL();
-    srcPreview.style.display = "block";
-    emptyState.style.display = "none";
-    imgInfo.textContent = sourceW + "\u00d7" + sourceH;
-    needRebuild = true;
-    setupCanvas();
-    buildVertices();
+function schedF(){
+  if(rafId!==null)return;
+  rafId=requestAnimationFrame(function(){
+    rafId=null;if(!sd)return;
+    if(needBuild){needBuild=false;buildVerts()}
     render();
-    drawGrid();
-  }
+  });
+}
 
-  /* ---- Canvas sizing ---- */
-  function setupCanvas() {
-    if (!sourceData) return;
-    if (!gl && !initGL()) return;
-    var dpr = window.devicePixelRatio || 1;
-    var wW = canvasWrap.clientWidth;
-    var wH = canvasWrap.clientHeight;
-    var srcA = sourceW / sourceH;
-    var wA = wW / wH;
-    if (srcA > wA) {
-      dispW = wW;
-      dispH = Math.round(wW / srcA);
-    } else {
-      dispH = wH;
-      dispW = Math.round(wH * srcA);
-    }
-    var cW = Math.round(dispW * dpr);
-    var cH = Math.round(dispH * dpr);
-    glCanvas.width = cW;
-    glCanvas.height = cH;
-    glCanvas.style.width = dispW + "px";
-    glCanvas.style.height = dispH + "px";
-    gl.viewport(0, 0, cW, cH);
-  }
-
-  /* ---- WebGL init ---- */
-  function initGL() {
-    gl = glCanvas.getContext("webgl", {
-      alpha: false,
-      antialias: true,
-      premultipliedAlpha: false,
-      preserveDrawingBuffer: true
-    });
-    if (!gl) { alert("WebGL unavailable"); return false; }
-
-    /* --- Points program --- */
-    var vsP = [
-      "attribute vec2 a_pos;",
-      "attribute vec3 a_rgb;",
-      "uniform float u_ps;",
-      "uniform float u_w;",
-      "uniform vec3 u_cm;",
-      "varying vec4 v_col;",
-      "void main() {",
-      "  gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);",
-      "  gl_PointSize = u_ps;",
-      "  v_col = vec4(a_rgb * u_cm, u_w);",
-      "}"
-    ].join("\n");
-
-    var fsP = [
-      "precision mediump float;",
-      "varying vec4 v_col;",
-      "void main() { gl_FragColor = v_col; }"
-    ].join("\n");
-
-    /* --- Lines program --- */
-    var vsL = [
-      "attribute vec2 a_pos;",
-      "attribute vec3 a_rgb;",
-      "uniform float u_w;",
-      "uniform vec3 u_cm;",
-      "varying vec4 v_col;",
-      "void main() {",
-      "  gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);",
-      "  v_col = vec4(a_rgb * u_cm, u_w);",
-      "}"
-    ].join("\n");
-
-    var fsL = fsP; /* same fragment shader */
-
-    function mk(type, src) {
-      var s = gl.createShader(type);
-      gl.shaderSource(s, src);
-      gl.compileShader(s);
-      return s;
-    }
-    function mkProg(vSrc, fSrc) {
-      var p = gl.createProgram();
-      gl.attachShader(p, mk(gl.VERTEX_SHADER, vSrc));
-      gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fSrc));
-      gl.linkProgram(p);
-      return p;
-    }
-
-    progPoints = mkProg(vsP, fsP);
-    progLines  = mkProg(vsL, fsL);
-
-    gl.useProgram(progPoints);
-    uPS_p = gl.getUniformLocation(progPoints, "u_ps");
-    uW_p  = gl.getUniformLocation(progPoints, "u_w");
-    uC_p  = gl.getUniformLocation(progPoints, "u_cm");
-
-    gl.useProgram(progLines);
-    uW_l = gl.getUniformLocation(progLines, "u_w");
-    uC_l = gl.getUniformLocation(progLines, "u_cm");
-
-    pointsBuf = gl.createBuffer();
-    linesBuf  = gl.createBuffer();
-    return true;
-  }
-
-  /* ---- Helper: get luminance at (row, col) with boundary clamp ---- */
-  function getLum(px, row, col) {
-    if (row < 0) row = 0;
-    if (row >= sourceH) row = sourceH - 1;
-    if (col < 0) col = 0;
-    if (col >= sourceW) col = sourceW - 1;
-    var pi = (row * sourceW + col) * 4;
-    var r = px[pi] / 255.0;
-    var g = px[pi + 1] / 255.0;
-    var b = px[pi + 2] / 255.0;
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  }
-
-  function getRGB(px, row, col) {
-    if (row < 0) row = 0;
-    if (row >= sourceH) row = sourceH - 1;
-    if (col < 0) col = 0;
-    if (col >= sourceW) col = sourceW - 1;
-    var pi = (row * sourceW + col) * 4;
-    return [px[pi] / 255.0, px[pi + 1] / 255.0, px[pi + 2] / 255.0];
-  }
-
-  /* ---- Catmull-Rom interpolation ---- */
-  function catmullRom(p0, p1, p2, p3, t) {
-    var t2 = t * t;
-    var t3 = t2 * t;
-    return 0.5 * (
-      (2.0 * p1) +
-      (-p0 + p2) * t +
-      (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
-      (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
-    );
-  }
-
-  /* ---- Build vertices ---- */
-  function buildVertices() {
-    if (!sourceData || !gl) return;
-    var px = sourceData.data;
-    var invG = 1.0 / gamma;
-    var sub = subdivLevel; /* 1=original rows only, 2=1 interp between each, etc */
-
-    /* Total rows after subdivision */
-    var totalRows = (sourceH - 1) * sub + 1;
-
-    /* --- POINTS buffer --- */
-    var pArr = new Float32Array(totalRows * sourceW * 5);
-    var pIdx = 0;
-
-    for (var ri = 0; ri < totalRows; ri++) {
-      var srcRowF = ri / sub;  /* fractional source row */
-      var srcRow0 = Math.floor(srcRowF);
-      var frac = srcRowF - srcRow0;
-
-      for (var col = 0; col < sourceW; col++) {
-        var lum, r, g, b;
-
-        if (frac < 0.001) {
-          /* Exact source row */
-          lum = getLum(px, srcRow0, col);
-          var rgb = getRGB(px, srcRow0, col);
-          r = rgb[0]; g = rgb[1]; b = rgb[2];
-        } else {
-          /* Catmull-Rom interpolation across rows */
-          var r0 = srcRow0 - 1;
-          var r1 = srcRow0;
-          var r2 = srcRow0 + 1;
-          var r3 = srcRow0 + 2;
-
-          var l0 = getLum(px, r0, col);
-          var l1 = getLum(px, r1, col);
-          var l2 = getLum(px, r2, col);
-          var l3 = getLum(px, r3, col);
-          lum = catmullRom(l0, l1, l2, l3, frac);
-          if (lum < 0) lum = 0;
-          if (lum > 1) lum = 1;
-
-          /* Interpolate color too */
-          var c0 = getRGB(px, r0, col);
-          var c1 = getRGB(px, r1, col);
-          var c2 = getRGB(px, r2, col);
-          var c3 = getRGB(px, r3, col);
-          r = catmullRom(c0[0], c1[0], c2[0], c3[0], frac);
-          g = catmullRom(c0[1], c1[1], c2[1], c3[1], frac);
-          b = catmullRom(c0[2], c1[2], c2[2], c3[2], frac);
-          if (r < 0) r = 0; if (r > 1) r = 1;
-          if (g < 0) g = 0; if (g > 1) g = 1;
-          if (b < 0) b = 0; if (b > 1) b = 1;
-        }
-
-        var lumG = Math.pow(lum, invG);
-        pArr[pIdx]     = (col + 0.5) / sourceW;
-        pArr[pIdx + 1] = lumG;
-        pArr[pIdx + 2] = r;
-        pArr[pIdx + 3] = g;
-        pArr[pIdx + 4] = b;
-        pIdx += 5;
-      }
-    }
-    pointsCount = totalRows * sourceW;
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, pArr, gl.STATIC_DRAW);
-
-    /* --- LINES buffer: connect adjacent columns within each row --- */
-    /* Each line segment = 2 vertices, each vertex = 5 floats */
-    var lArr = new Float32Array(totalRows * (sourceW - 1) * 2 * 5);
-    var lIdx = 0;
-
-    for (var ri2 = 0; ri2 < totalRows; ri2++) {
-      var base = ri2 * sourceW * 5;
-      for (var c = 0; c < sourceW - 1; c++) {
-        var off0 = base + c * 5;
-        var off1 = base + (c + 1) * 5;
-        /* vertex 0 */
-        lArr[lIdx]     = pArr[off0];
-        lArr[lIdx + 1] = pArr[off0 + 1];
-        lArr[lIdx + 2] = pArr[off0 + 2];
-        lArr[lIdx + 3] = pArr[off0 + 3];
-        lArr[lIdx + 4] = pArr[off0 + 4];
-        lIdx += 5;
-        /* vertex 1 */
-        lArr[lIdx]     = pArr[off1];
-        lArr[lIdx + 1] = pArr[off1 + 1];
-        lArr[lIdx + 2] = pArr[off1 + 2];
-        lArr[lIdx + 3] = pArr[off1 + 3];
-        lArr[lIdx + 4] = pArr[off1 + 4];
-        lIdx += 5;
-      }
-    }
-    linesCount = totalRows * (sourceW - 1) * 2;
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, linesBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, lArr, gl.STATIC_DRAW);
-  }
-
-  /* ---- Render ---- */
-  function render() {
-    if (!gl || pointsCount === 0) return;
-
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-
-    var dpr = window.devicePixelRatio || 1;
-
-    if (drawMode === "points") {
-      gl.useProgram(progPoints);
-      gl.uniform1f(uPS_p, ptSize * dpr);
-      gl.uniform1f(uW_p, weight);
-      gl.uniform3f(uC_p, colorR, colorG, colorB);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuf);
-      var aP = gl.getAttribLocation(progPoints, "a_pos");
-      var aC = gl.getAttribLocation(progPoints, "a_rgb");
-      gl.enableVertexAttribArray(aP);
-      gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 20, 0);
-      gl.enableVertexAttribArray(aC);
-      gl.vertexAttribPointer(aC, 3, gl.FLOAT, false, 20, 8);
-      gl.drawArrays(gl.POINTS, 0, pointsCount);
-      gl.disableVertexAttribArray(aP);
-      gl.disableVertexAttribArray(aC);
-
-    } else {
-      /* LINES mode */
-      gl.useProgram(progLines);
-      gl.uniform1f(uW_l, weight);
-      gl.uniform3f(uC_l, colorR, colorG, colorB);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, linesBuf);
-      var aP2 = gl.getAttribLocation(progLines, "a_pos");
-      var aC2 = gl.getAttribLocation(progLines, "a_rgb");
-      gl.enableVertexAttribArray(aP2);
-      gl.vertexAttribPointer(aP2, 2, gl.FLOAT, false, 20, 0);
-      gl.enableVertexAttribArray(aC2);
-      gl.vertexAttribPointer(aC2, 3, gl.FLOAT, false, 20, 8);
-      gl.drawArrays(gl.LINES, 0, linesCount);
-      gl.disableVertexAttribArray(aP2);
-      gl.disableVertexAttribArray(aC2);
-    }
-  }
-
-  /* ---- Grid ---- */
-  function drawGrid() {
-    if (!dispW || !dispH) return;
-    var dpr = window.devicePixelRatio || 1;
-    gridCanvas.width = Math.round(dispW * dpr);
-    gridCanvas.height = Math.round(dispH * dpr);
-    gridCanvas.style.width = dispW + "px";
-    gridCanvas.style.height = dispH + "px";
-    gridCanvas.style.position = "absolute";
-    var wr = canvasWrap.getBoundingClientRect();
-    var gr = glCanvas.getBoundingClientRect();
-    gridCanvas.style.left = (gr.left - wr.left) + "px";
-    gridCanvas.style.top = (gr.top - wr.top) + "px";
-
-    var ctx = gridCanvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, dispW, dispH);
-
-    var steps = [0, 128, 256, 384, 512, 640, 768, 896, 1023];
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
-    ctx.lineWidth = 0.5;
-    ctx.fillStyle = "rgba(255,255,255,0.10)";
-    ctx.font = "7px 'Courier New', monospace";
-    ctx.textBaseline = "middle";
-    for (var i = 0; i < steps.length; i++) {
-      var v = steps[i];
-      var y = dispH - (v / 1023.0) * dispH;
-      ctx.beginPath();
-      ctx.moveTo(26, y);
-      ctx.lineTo(dispW, y);
-      ctx.stroke();
-      ctx.fillText(v.toString(), 1, y);
-    }
-  }
-
-  /* ---- Save ---- */
-  btnSave.onclick = function() {
-    if (!glCanvas.width || !glCanvas.height || !gl) return;
-
-    /* Force a fresh render */
-    render();
-
-    var w = glCanvas.width, h = glCanvas.height;
-    var buf = new Uint8Array(w * h * 4);
-    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
-
-    var ec = document.createElement("canvas");
-    ec.width = w; ec.height = h;
-    var ctx = ec.getContext("2d");
-    var id = ctx.createImageData(w, h);
-    for (var y = 0; y < h; y++) {
-      var s = (h - 1 - y) * w * 4;
-      var d = y * w * 4;
-      for (var x = 0; x < w * 4; x++) { id.data[d + x] = buf[s + x]; }
-    }
-    ctx.putImageData(id, 0, 0);
-
-    /* Try toDataURL fallback if toBlob fails */
-    try {
-      ec.toBlob(function(blob) {
-        if (!blob) {
-          fallbackSave(ec);
-          return;
-        }
-        shareSave(blob);
-      }, "image/png");
-    } catch (e) {
-      fallbackSave(ec);
-    }
+/* Photo */
+bPh.onclick=function(){fi.click()};
+fi.onchange=function(e){
+  var f=e.target.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){loadSrc(img)};
+    img.src=ev.target.result;
   };
+  rd.readAsDataURL(f);
+};
 
-  function shareSave(blob) {
-    if (navigator.share && navigator.canShare) {
-      try {
-        var file = new File([blob], "density-field.png", { type: "image/png" });
-        var sd = { files: [file] };
-        if (navigator.canShare(sd)) {
-          navigator.share(sd).catch(function() { dlBlob(blob); });
-          return;
-        }
-      } catch (e) { /* fall through */ }
+function loadSrc(img){
+  var natW=img.naturalWidth,natH=img.naturalHeight;
+  origInfo=natW+"\u00d7"+natH;
+
+  /* Resize if too large */
+  var longEdge=Math.max(natW,natH);
+  var scale=1;
+  if(longEdge>MAX_SRC){
+    scale=MAX_SRC/longEdge;
+  }
+  sW=Math.round(natW*scale);
+  sH=Math.round(natH*scale);
+
+  var oc=document.createElement("canvas");
+  oc.width=sW;oc.height=sH;
+  var ctx=oc.getContext("2d");
+  ctx.drawImage(img,0,0,sW,sH);
+  sd=ctx.getImageData(0,0,sW,sH);
+
+  sp.src=oc.toDataURL();sp.style.display="block";
+  es.style.display="none";
+  inf.textContent=origInfo+(scale<1?" \u2192 "+sW+"\u00d7"+sH:"");
+
+  needBuild=true;
+  setupCanvas();buildVerts();render();drawGrid();
+}
+
+/* Canvas sizing */
+function setupCanvas(){
+  if(!sd)return;if(!gl&&!initGL())return;
+  var dpr=window.devicePixelRatio||1;
+  var wW=cw.clientWidth,wH=cw.clientHeight;
+  var sa=sW/sH,wa=wW/wH;
+  if(sa>wa){dW=wW;dH=Math.round(wW/sa)}else{dH=wH;dW=Math.round(wH*sa)}
+  var cW=Math.round(dW*dpr),cH=Math.round(dH*dpr);
+  gc.width=cW;gc.height=cH;gc.style.width=dW+"px";gc.style.height=dH+"px";
+  gl.viewport(0,0,cW,cH);
+  setupFB(cW,cH);
+}
+
+/* WebGL init */
+function initGL(){
+  gl=gc.getContext("webgl",{alpha:false,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:true});
+  if(!gl){alert("WebGL unavailable");return false}
+
+  var vsM=[
+    "attribute vec2 a_p;","attribute vec3 a_c;","attribute float a_l;",
+    "uniform float u_ps;","uniform float u_w;","uniform vec3 u_cm;",
+    "varying vec4 v_c;",
+    "void main(){",
+    "  gl_Position=vec4(a_p*2.0-1.0,0.0,1.0);",
+    "  gl_PointSize=u_ps*(0.3+a_l*0.7);",
+    "  float a=u_w*(0.4+a_l*0.6);",
+    "  v_c=vec4(a_c*u_cm,a);",
+    "}"
+  ].join("\n");
+  var fsM="precision mediump float;varying vec4 v_c;void main(){gl_FragColor=v_c;}";
+
+  var vsG=[
+    "attribute vec2 a_p;","varying vec2 v_uv;",
+    "void main(){v_uv=a_p;gl_Position=vec4(a_p*2.0-1.0,0.0,1.0);}"
+  ].join("\n");
+  var fsG=[
+    "precision mediump float;",
+    "varying vec2 v_uv;",
+    "uniform sampler2D u_tex;","uniform vec2 u_res;","uniform float u_glow;",
+    "void main(){",
+    "  vec2 px=1.0/u_res;",
+    "  vec4 s=vec4(0.0);",
+    "  float k[5];k[0]=0.06;k[1]=0.24;k[2]=0.40;k[3]=0.24;k[4]=0.06;",
+    "  for(int y=-2;y<=2;y++){for(int x=-2;x<=2;x++){",
+    "    s+=texture2D(u_tex,v_uv+vec2(float(x),float(y))*px*2.0)*k[x+2]*k[y+2];",
+    "  }}",
+    "  gl_FragColor=texture2D(u_tex,v_uv)+s*u_glow;",
+    "}"
+  ].join("\n");
+
+  function mk(t,s){var sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh}
+  function mkP(v,f){var p=gl.createProgram();gl.attachShader(p,mk(gl.VERTEX_SHADER,v));gl.attachShader(p,mk(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);return p}
+
+  prog=mkP(vsM,fsM);
+  progG=mkP(vsG,fsG);
+
+  gl.useProgram(prog);
+  u_ps=gl.getUniformLocation(prog,"u_ps");
+  u_w=gl.getUniformLocation(prog,"u_w");
+  u_cm=gl.getUniformLocation(prog,"u_cm");
+
+  gl.useProgram(progG);
+  u_tex=gl.getUniformLocation(progG,"u_tex");
+  u_res=gl.getUniformLocation(progG,"u_res");
+  u_glow=gl.getUniformLocation(progG,"u_glow");
+
+  pBuf=gl.createBuffer();lBuf=gl.createBuffer();
+  quadBuf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,0,1,1,0,1]),gl.STATIC_DRAW);
+  return true;
+}
+
+function setupFB(w,h){
+  if(fbW===w&&fbH===h)return;fbW=w;fbH=h;
+  if(fbTex)gl.deleteTexture(fbTex);if(fb)gl.deleteFramebuffer(fb);
+  fbTex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,fbTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  fb=gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,fbTex,0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+}
+
+/* Helpers */
+function getLum(px,r,c){
+  if(r<0)r=0;if(r>=sH)r=sH-1;if(c<0)c=0;if(c>=sW)c=sW-1;
+  var i=(r*sW+c)*4;return 0.2126*px[i]/255+0.7152*px[i+1]/255+0.0722*px[i+2]/255;
+}
+function getRGB(px,r,c){
+  if(r<0)r=0;if(r>=sH)r=sH-1;if(c<0)c=0;if(c>=sW)c=sW-1;
+  var i=(r*sW+c)*4;return[px[i]/255,px[i+1]/255,px[i+2]/255];
+}
+function catR(p0,p1,p2,p3,t){
+  var t2=t*t,t3=t2*t;
+  return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3);
+}
+function cl01(v){return v<0?0:v>1?1:v}
+
+/* Build vertices */
+function buildVerts(){
+  if(!sd||!gl)return;
+  var px=sd.data;
+  var invG=1.0/gamma;
+  var sub=subdiv;
+
+  var tRows=(sH-1)*sub+1;
+  var tCols=(sW-1)*sub+1;
+
+  /* Check vertex count - cap subdivision if needed */
+  var totalPts=tRows*tCols;
+  if(totalPts>MAX_VERTS){
+    /* Reduce subdiv to fit */
+    while(sub>1){
+      sub--;
+      tRows=(sH-1)*sub+1;
+      tCols=(sW-1)*sub+1;
+      totalPts=tRows*tCols;
+      if(totalPts<=MAX_VERTS)break;
     }
-    dlBlob(blob);
+    subdiv=sub;
+    sSu.value=sub;
+    vSu.textContent=sub.toString();
   }
 
-  function dlBlob(blob) {
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = "density-field.png";
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
-  }
+  /* Grid: 6 floats per vertex (x, y, r, g, b, lum) */
+  var grid=new Float32Array(totalPts*6);
+  var gi=0;
 
-  function fallbackSave(canvas) {
-    var dataUrl = canvas.toDataURL("image/png");
-    var a = document.createElement("a");
-    a.href = dataUrl; a.download = "density-field.png";
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-  }
+  for(var ri=0;ri<tRows;ri++){
+    var srf=ri/sub;
+    var sr0=Math.floor(srf);
+    var fR=srf-sr0;
 
-  /* ---- Resize ---- */
-  var rT = null;
-  window.onresize = function() {
-    clearTimeout(rT);
-    rT = setTimeout(function() {
-      if (sourceData) {
-        setupCanvas();
-        render();
-        drawGrid();
+    for(var ci=0;ci<tCols;ci++){
+      var scf=ci/sub;
+      var sc0=Math.floor(scf);
+      var fC=scf-sc0;
+
+      var lum,r,g,b;
+
+      if(fR<0.001&&fC<0.001){
+        lum=getLum(px,sr0,sc0);
+        var rgb=getRGB(px,sr0,sc0);r=rgb[0];g=rgb[1];b=rgb[2];
+      } else if(fR<0.001){
+        var c0=sc0-1,c1=sc0,c2=sc0+1,c3=sc0+2;
+        lum=cl01(catR(getLum(px,sr0,c0),getLum(px,sr0,c1),getLum(px,sr0,c2),getLum(px,sr0,c3),fC));
+        var a0=getRGB(px,sr0,c0),a1=getRGB(px,sr0,c1),a2=getRGB(px,sr0,c2),a3=getRGB(px,sr0,c3);
+        r=cl01(catR(a0[0],a1[0],a2[0],a3[0],fC));
+        g=cl01(catR(a0[1],a1[1],a2[1],a3[1],fC));
+        b=cl01(catR(a0[2],a1[2],a2[2],a3[2],fC));
+      } else if(fC<0.001){
+        var r0=sr0-1,r1=sr0,r2=sr0+1,r3=sr0+2;
+        lum=cl01(catR(getLum(px,r0,sc0),getLum(px,r1,sc0),getLum(px,r2,sc0),getLum(px,r3,sc0),fR));
+        var b0=getRGB(px,r0,sc0),b1=getRGB(px,r1,sc0),b2=getRGB(px,r2,sc0),b3=getRGB(px,r3,sc0);
+        r=cl01(catR(b0[0],b1[0],b2[0],b3[0],fR));
+        g=cl01(catR(b0[1],b1[1],b2[1],b3[1],fR));
+        b=cl01(catR(b0[2],b1[2],b2[2],b3[2],fR));
+      } else {
+        /* Bicubic */
+        var rr=[sr0-1,sr0,sr0+1,sr0+2];
+        var cc=[sc0-1,sc0,sc0+1,sc0+2];
+        var lC=[0,0,0,0],rC=[0,0,0,0],gC=[0,0,0,0],bC=[0,0,0,0];
+        for(var k=0;k<4;k++){
+          lC[k]=cl01(catR(getLum(px,rr[0],cc[k]),getLum(px,rr[1],cc[k]),getLum(px,rr[2],cc[k]),getLum(px,rr[3],cc[k]),fR));
+          var v0=getRGB(px,rr[0],cc[k]),v1=getRGB(px,rr[1],cc[k]),v2=getRGB(px,rr[2],cc[k]),v3=getRGB(px,rr[3],cc[k]);
+          rC[k]=cl01(catR(v0[0],v1[0],v2[0],v3[0],fR));
+          gC[k]=cl01(catR(v0[1],v1[1],v2[1],v3[1],fR));
+          bC[k]=cl01(catR(v0[2],v1[2],v2[2],v3[2],fR));
+        }
+        lum=cl01(catR(lC[0],lC[1],lC[2],lC[3],fC));
+        r=cl01(catR(rC[0],rC[1],rC[2],rC[3],fC));
+        g=cl01(catR(gC[0],gC[1],gC[2],gC[3],fC));
+        b=cl01(catR(bC[0],bC[1],bC[2],bC[3],fC));
       }
-    }, 200);
-  };
+
+      var lumG=Math.pow(lum,invG);
+      grid[gi]=(ci+0.5)/tCols;
+      grid[gi+1]=lumG;
+      grid[gi+2]=r;grid[gi+3]=g;grid[gi+4]=b;
+      grid[gi+5]=lumG;
+      gi+=6;
+    }
+  }
+
+  pCnt=totalPts;
+  gl.bindBuffer(gl.ARRAY_BUFFER,pBuf);
+  gl.bufferData(gl.ARRAY_BUFFER,grid,gl.STATIC_DRAW);
+
+  /* Lines: connect adjacent columns per row */
+  var lTotal=tRows*(tCols-1)*2;
+  var lArr=new Float32Array(lTotal*6);
+  var li=0;
+  for(var row=0;row<tRows;row++){
+    var base=row*tCols*6;
+    for(var c=0;c<tCols-1;c++){
+      var o0=base+c*6,o1=base+(c+1)*6;
+      lArr[li]=grid[o0];lArr[li+1]=grid[o0+1];lArr[li+2]=grid[o0+2];
+      lArr[li+3]=grid[o0+3];lArr[li+4]=grid[o0+4];lArr[li+5]=grid[o0+5];li+=6;
+      lArr[li]=grid[o1];lArr[li+1]=grid[o1+1];lArr[li+2]=grid[o1+2];
+      lArr[li+3]=grid[o1+3];lArr[li+4]=grid[o1+4];lArr[li+5]=grid[o1+5];li+=6;
+    }
+  }
+  lCnt=lTotal;
+  gl.bindBuffer(gl.ARRAY_BUFFER,lBuf);
+  gl.bufferData(gl.ARRAY_BUFFER,lArr,gl.STATIC_DRAW);
+}
+
+/* Render */
+function render(){
+  if(!gl||pCnt===0)return;
+  var w=gc.width,h=gc.height;
+  var dpr=window.devicePixelRatio||1;
+  var useGlow=glow>0.01;
+
+  if(useGlow){setupFB(w,h);gl.bindFramebuffer(gl.FRAMEBUFFER,fb)}
+  gl.viewport(0,0,w,h);
+  gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+
+  gl.useProgram(prog);
+  gl.uniform1f(u_ps,ptSz*dpr);
+  gl.uniform1f(u_w,weight);
+  gl.uniform3f(u_cm,cR,cG,cB);
+
+  var buf=mode==="lines"?lBuf:pBuf;
+  var cnt=mode==="lines"?lCnt:pCnt;
+  var dt=mode==="lines"?gl.LINES:gl.POINTS;
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  var aP=gl.getAttribLocation(prog,"a_p");
+  var aC=gl.getAttribLocation(prog,"a_c");
+  var aL=gl.getAttribLocation(prog,"a_l");
+  gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,24,0);
+  gl.enableVertexAttribArray(aC);gl.vertexAttribPointer(aC,3,gl.FLOAT,false,24,8);
+  gl.enableVertexAttribArray(aL);gl.vertexAttribPointer(aL,1,gl.FLOAT,false,24,20);
+  gl.drawArrays(dt,0,cnt);
+  gl.disableVertexAttribArray(aP);gl.disableVertexAttribArray(aC);gl.disableVertexAttribArray(aL);
+
+  if(useGlow){
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    gl.viewport(0,0,w,h);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.disable(gl.BLEND);
+    gl.useProgram(progG);
+    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,fbTex);
+    gl.uniform1i(u_tex,0);gl.uniform2f(u_res,w,h);gl.uniform1f(u_glow,glow);
+    gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
+    var aP2=gl.getAttribLocation(progG,"a_p");
+    gl.enableVertexAttribArray(aP2);gl.vertexAttribPointer(aP2,2,gl.FLOAT,false,0,0);
+    gl.drawArrays(gl.TRIANGLES,0,6);gl.disableVertexAttribArray(aP2);
+  }
+}
+
+/* Grid */
+function drawGrid(){
+  if(!dW||!dH)return;
+  var dpr=window.devicePixelRatio||1;
+  gv.width=Math.round(dW*dpr);gv.height=Math.round(dH*dpr);
+  gv.style.width=dW+"px";gv.style.height=dH+"px";gv.style.position="absolute";
+  var wr=cw.getBoundingClientRect(),gr=gc.getBoundingClientRect();
+  gv.style.left=(gr.left-wr.left)+"px";gv.style.top=(gr.top-wr.top)+"px";
+  var ctx=gv.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,dW,dH);
+  var steps=[0,128,256,384,512,640,768,896,1023];
+  ctx.strokeStyle="rgba(255,255,255,0.03)";ctx.lineWidth=0.5;
+  ctx.fillStyle="rgba(255,255,255,0.08)";ctx.font="7px 'Courier New',monospace";ctx.textBaseline="middle";
+  for(var i=0;i<steps.length;i++){
+    var v=steps[i],y=dH-(v/1023)*dH;
+    ctx.beginPath();ctx.moveTo(24,y);ctx.lineTo(dW,y);ctx.stroke();
+    ctx.fillText(v.toString(),1,y);
+  }
+}
+
+/* HQ Render */
+bHQ.onclick=function(){
+  if(!sd||!gl)return;
+  st.style.display="block";
+  setTimeout(function(){
+    var dpr=window.devicePixelRatio||1;
+    var scale=3;
+    var hqW=Math.round(dW*dpr*scale),hqH=Math.round(dH*dpr*scale);
+    var origW=gc.width,origH=gc.height;
+    gc.width=hqW;gc.height=hqH;gl.viewport(0,0,hqW,hqH);
+    setupFB(hqW,hqH);
+    var oSz=ptSz;ptSz=ptSz*scale;render();ptSz=oSz;
+
+    var buf=new Uint8Array(hqW*hqH*4);
+    gl.readPixels(0,0,hqW,hqH,gl.RGBA,gl.UNSIGNED_BYTE,buf);
+    var ec=document.createElement("canvas");ec.width=hqW;ec.height=hqH;
+    var ctx=ec.getContext("2d");var id=ctx.createImageData(hqW,hqH);
+    for(var y=0;y<hqH;y++){var s=(hqH-1-y)*hqW*4,d=y*hqW*4;for(var x=0;x<hqW*4;x++)id.data[d+x]=buf[s+x]}
+    ctx.putImageData(id,0,0);
+
+    gc.width=origW;gc.height=origH;gl.viewport(0,0,origW,origH);
+    setupFB(origW,origH);render();
+
+    try{ec.toBlob(function(blob){st.style.display="none";if(!blob){fallSv(ec);return}doShr(blob,"density-field-hq.png")},"image/png")}
+    catch(e){st.style.display="none";fallSv(ec)}
+  },50);
+};
+
+/* Save */
+bSv.onclick=function(){
+  if(!gc.width||!gc.height||!gl)return;
+  render();
+  var w=gc.width,h=gc.height;
+  var buf=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf);
+  var ec=document.createElement("canvas");ec.width=w;ec.height=h;
+  var ctx=ec.getContext("2d");var id=ctx.createImageData(w,h);
+  for(var y=0;y<h;y++){var s=(h-1-y)*w*4,d=y*w*4;for(var x=0;x<w*4;x++)id.data[d+x]=buf[s+x]}
+  ctx.putImageData(id,0,0);
+  try{ec.toBlob(function(blob){if(!blob){fallSv(ec);return}doShr(blob,"density-field.png")},"image/png")}
+  catch(e){fallSv(ec)}
+};
+
+function doShr(blob,name){
+  if(navigator.share&&navigator.canShare){
+    try{var f=new File([blob],name,{type:"image/png"});var s={files:[f]};
+    if(navigator.canShare(s)){navigator.share(s).catch(function(){dlB(blob,name)});return}}catch(e){}
+  }dlB(blob,name);
+}
+function dlB(blob,name){
+  var u=URL.createObjectURL(blob);var a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(u)},2000);
+}
+function fallSv(cv){
+  var u=cv.toDataURL("image/png");var a=document.createElement("a");
+  a.href=u;a.download="density-field.png";document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+/* Resize */
+var rT=null;
+window.onresize=function(){clearTimeout(rT);rT=setTimeout(function(){if(sd){setupCanvas();render();drawGrid()}},200)};
+
 })();
 </script>
 </body>
