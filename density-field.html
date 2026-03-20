@@ -26,7 +26,7 @@ html,body{width:100%;height:100%;background:#0a0a0a;color:#c0c0c0;font-family:'C
 input[type="range"]{-webkit-appearance:none;appearance:none;flex:1;height:2px;background:#1e1e1e;outline:none;border-radius:1px}
 input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;background:#1c1c1c;border:1.5px solid #444}
 .sep{height:1px;background:#181818;margin:8px 0}
-.mr{display:flex;gap:4px;margin-bottom:11px;align-items:center}
+.mr{display:flex;gap:4px;margin-bottom:11px;align-items:center;flex-wrap:wrap}
 .mb{padding:5px 10px;background:#111;border:1px solid #1e1e1e;color:#3a3a3a;font-family:'Courier New',monospace;font-size:8px;letter-spacing:1px;cursor:pointer}
 .mb.ac{border-color:#3a3a3a;color:#888;background:#1a1a1a}
 .clr{color:#775555}.clg{color:#557755}.clb{color:#555577}
@@ -37,7 +37,6 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:non
 #fi{display:none}
 .gov{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
 .dbg{font-size:5px;color:#1e1e1e;letter-spacing:1px;text-align:center;margin-top:4px}
-
 body.desktop .main{flex-direction:row}
 body.desktop .cw{flex:1}
 body.desktop .panel{flex:0 0 280px;border-top:none;border-left:1px solid #1a1a1a;padding:16px 14px;order:1}
@@ -71,6 +70,8 @@ body.desktop .sep{margin:12px 0}
         <span class="cl">MODE</span>
         <button class="mb" id="mP">POINTS</button>
         <button class="mb ac" id="mL">LINES</button>
+        <button class="mb" id="mC">COLS</button>
+        <button class="mb" id="mB">BOTH</button>
         <button class="mb" id="mI">INVERT</button>
       </div>
       <div class="cr">
@@ -104,6 +105,11 @@ body.desktop .sep{margin:12px 0}
         <span class="cv" id="vGl">0.25</span>
       </div>
       <div class="sep"></div>
+      <div class="cr">
+        <span class="cl">MIX</span>
+        <input type="range" id="sMix" min="0" max="0.60" step="0.05" value="0.30">
+        <span class="cv" id="vMix">0.30</span>
+      </div>
       <div class="cr">
         <span class="cl">SAT</span>
         <input type="range" id="sSat" min="0" max="1.5" step="0.05" value="1.0">
@@ -167,6 +173,8 @@ var sB=document.getElementById("sB"),vB=document.getElementById("vB");
 var sRes=document.getElementById("sRes"),vRes=document.getElementById("vRes");
 var sHQ=document.getElementById("sHQ"),vHQ=document.getElementById("vHQ");
 var mP=document.getElementById("mP"),mL=document.getElementById("mL"),mI=document.getElementById("mI");
+var mC=document.getElementById("mC"),mB=document.getElementById("mB");
+var sMix=document.getElementById("sMix"),vMix=document.getElementById("vMix");
 var dbg=document.getElementById("dbg");
 
 sRes.min=P.resMin;sRes.max=P.resMax;sRes.value=P.resDef;vRes.textContent=P.resDef.toString();
@@ -174,17 +182,59 @@ sSu.max=P.maxSub;sSu.value=P.defSub;vSu.textContent=P.defSub.toString();
 
 var origImg=null,sd=null,sW=0,sH=0,natW=0,natH=0;
 var gl=null,prog=null,progG=null;
-var lBuf=null,pBuf=null,lCnt=0,pCnt=0;
+var lBuf=null,pBuf=null,vBuf=null,lCnt=0,pCnt=0,vCnt=0;
+var mxPBuf=null,mxLBuf=null,mxVBuf=null,mxPCnt=0,mxLCnt=0,mxVCnt=0;
 var dW=0,dH=0;
 var needBuild=true,needReproc=false,rafId=null,mode="lines";
 var fbTex=null,fb=null,fbW=0,fbH=0,quadBuf=null;
 var gamma=1.0,weight=0.020,ptSz=0.7,subdiv=P.defSub,glow=0.25;
-var cR=1.0,cG=1.0,cB=1.0,sat=1.0,procRes=P.resDef,hqScale=3;
+var cR=1.0,cG=1.0,cB=1.0,sat=1.0,mix=0.30,procRes=P.resDef,hqScale=3;
 var invert=false;
 var u_ps,u_w,u_cm,u_sat,u_tex,u_res,u_glow;
 
-mP.onclick=function(){mode="points";mP.className="mb ac";mL.className="mb";schedF()};
-mL.onclick=function(){mode="lines";mL.className="mb ac";mP.className="mb";schedF()};
+/* --- Mipmap chain --- */
+var mipChain=[];
+function buildMipChain(img){
+  mipChain=[];
+  var c0=document.createElement("canvas");
+  c0.width=img.naturalWidth;c0.height=img.naturalHeight;
+  c0.getContext("2d").drawImage(img,0,0);
+  mipChain.push(c0);
+  var w=c0.width,h=c0.height;
+  while(w>2&&h>2){
+    var nw=Math.round(w/2),nh=Math.round(h/2);
+    if(nw<1)nw=1;if(nh<1)nh=1;
+    var cn=document.createElement("canvas");cn.width=nw;cn.height=nh;
+    cn.getContext("2d").drawImage(mipChain[mipChain.length-1],0,0,nw,nh);
+    mipChain.push(cn);w=nw;h=nh;
+  }
+}
+function stepDownResize(tw,th){
+  if(mipChain.length===0){
+    var oc=document.createElement("canvas");oc.width=tw;oc.height=th;
+    oc.getContext("2d").drawImage(origImg,0,0,tw,th);return oc;
+  }
+  var best=0;
+  for(var i=0;i<mipChain.length;i++){
+    if(mipChain[i].width>=tw&&mipChain[i].height>=th){best=i}else{break}
+  }
+  var oc=document.createElement("canvas");oc.width=tw;oc.height=th;
+  var ctx=oc.getContext("2d");
+  if(ctx.imageSmoothingQuality){ctx.imageSmoothingQuality="high"}
+  ctx.drawImage(mipChain[best],0,0,tw,th);return oc;
+}
+
+/* --- Mode buttons --- */
+function setModeUI(){
+  mP.className=mode==="points"?"mb ac":"mb";
+  mL.className=mode==="lines"?"mb ac":"mb";
+  mC.className=mode==="cols"?"mb ac":"mb";
+  mB.className=mode==="both"?"mb ac":"mb";
+}
+mP.onclick=function(){mode="points";setModeUI();schedF()};
+mL.onclick=function(){mode="lines";setModeUI();schedF()};
+mC.onclick=function(){mode="cols";setModeUI();schedF()};
+mB.onclick=function(){mode="both";setModeUI();schedF()};
 mI.onclick=function(){invert=!invert;mI.className=invert?"mb ac":"mb";needBuild=true;schedF()};
 
 sRes.oninput=function(){procRes=parseInt(this.value);vRes.textContent=procRes.toString();needReproc=true;schedF()};
@@ -194,10 +244,11 @@ sSz.oninput=function(){ptSz=parseFloat(this.value);vSz.textContent=ptSz.toFixed(
 sSu.oninput=function(){subdiv=parseInt(this.value);vSu.textContent=subdiv.toString();needBuild=true;schedF()};
 sGl.oninput=function(){glow=parseFloat(this.value);vGl.textContent=glow.toFixed(2);schedF()};
 sSat.oninput=function(){sat=parseFloat(this.value);vSat.textContent=sat.toFixed(2);schedF()};
+sMix.oninput=function(){mix=parseFloat(this.value);vMix.textContent=mix.toFixed(2);needBuild=true;schedF()};
 sR.oninput=function(){cR=parseFloat(this.value);vR.textContent=cR.toFixed(2);schedF()};
 sG.oninput=function(){cG=parseFloat(this.value);vG.textContent=cG.toFixed(2);schedF()};
 sB.oninput=function(){cB=parseFloat(this.value);vB.textContent=cB.toFixed(2);schedF()};
-sHQ.oninput=function(){hqScale=parseInt(this.value);vHQ.textContent=hqScale+"x";};
+sHQ.oninput=function(){hqScale=parseInt(this.value);vHQ.textContent=hqScale+"x"};
 
 function schedF(){
   if(rafId!==null)return;
@@ -213,13 +264,13 @@ bPh.onclick=function(){fi.click()};
 fi.onchange=function(e){
   var f=e.target.files[0];if(!f)return;
   var rd=new FileReader();
-  rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;reprocess()};img.src=ev.target.result};
+  rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;buildMipChain(img);reprocess()};img.src=ev.target.result};
   rd.readAsDataURL(f);
 };
 if(isDsk){
   cw.ondragover=function(e){e.preventDefault()};
   cw.ondrop=function(e){e.preventDefault();var f=e.dataTransfer.files[0];if(!f||!f.type.match(/image/))return;
-    var rd=new FileReader();rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;reprocess()};img.src=ev.target.result};rd.readAsDataURL(f)};
+    var rd=new FileReader();rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;buildMipChain(img);reprocess()};img.src=ev.target.result};rd.readAsDataURL(f)};
 }
 
 function reprocess(){
@@ -228,9 +279,8 @@ function reprocess(){
   if(le>procRes)sc=procRes/le;
   sW=Math.round(natW*sc);sH=Math.round(natH*sc);
   if(sW<2)sW=2;if(sH<2)sH=2;
-  var oc=document.createElement("canvas");oc.width=sW;oc.height=sH;
-  var ctx=oc.getContext("2d");ctx.drawImage(origImg,0,0,sW,sH);
-  sd=ctx.getImageData(0,0,sW,sH);
+  var oc=stepDownResize(sW,sH);
+  sd=oc.getContext("2d").getImageData(0,0,sW,sH);
   sp.src=oc.toDataURL();sp.style.display="block";es.style.display="none";
   inf.textContent=natW+"\u00d7"+natH+" \u2192 "+sW+"\u00d7"+sH;
   needBuild=true;setupCanvas();buildVerts();render();drawGrid();
@@ -250,7 +300,6 @@ function setupCanvas(){
 function initGL(){
   gl=gc.getContext("webgl",{alpha:false,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:true});
   if(!gl){alert("WebGL unavailable");return false}
-  /* Saturation is done in fragment shader via uniform */
   var vsM=["attribute vec2 a_p;","attribute vec3 a_c;","attribute float a_l;",
     "uniform float u_ps;","uniform float u_w;","uniform vec3 u_cm;",
     "varying vec3 v_rgb;","varying float v_a;","varying float v_l;",
@@ -283,7 +332,8 @@ function initGL(){
   u_cm=gl.getUniformLocation(prog,"u_cm");u_sat=gl.getUniformLocation(prog,"u_sat");
   gl.useProgram(progG);
   u_tex=gl.getUniformLocation(progG,"u_tex");u_res=gl.getUniformLocation(progG,"u_res");u_glow=gl.getUniformLocation(progG,"u_glow");
-  pBuf=gl.createBuffer();lBuf=gl.createBuffer();
+  pBuf=gl.createBuffer();lBuf=gl.createBuffer();vBuf=gl.createBuffer();
+  mxPBuf=gl.createBuffer();mxLBuf=gl.createBuffer();mxVBuf=gl.createBuffer();
   quadBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,0,1,1,0,1]),gl.STATIC_DRAW);
   return true;
@@ -349,8 +399,10 @@ function buildVerts(){
       grid[gi]=(ci+0.5)/tC;grid[gi+1]=yPos;grid[gi+2]=r;grid[gi+3]=g;grid[gi+4]=b;grid[gi+5]=lumG;gi+=6;
     }
   }
+
   pCnt=tot;gl.bindBuffer(gl.ARRAY_BUFFER,pBuf);gl.bufferData(gl.ARRAY_BUFFER,grid,gl.STATIC_DRAW);
 
+  /* LINES buffer */
   var lTot=tR*(tC-1)*2,lArr=new Float32Array(lTot*6),li=0;
   for(var row=0;row<tR;row++){var base=row*tC*6;for(var c=0;c<tC-1;c++){
     var o0=base+c*6,o1=base+(c+1)*6;
@@ -358,7 +410,156 @@ function buildVerts(){
     for(var j2=0;j2<6;j2++)lArr[li+j2]=grid[o1+j2];li+=6;
   }}
   lCnt=lTot;gl.bindBuffer(gl.ARRAY_BUFFER,lBuf);gl.bufferData(gl.ARRAY_BUFFER,lArr,gl.STATIC_DRAW);
+
+  /* COLS buffer */
+  var vTot=tC*(tR-1)*2,vArr=new Float32Array(vTot*6),vi=0;
+  for(var col=0;col<tC;col++){for(var rw=0;rw<tR-1;rw++){
+    var o0v=(rw*tC+col)*6,o1v=((rw+1)*tC+col)*6;
+    for(var j3=0;j3<6;j3++)vArr[vi+j3]=grid[o0v+j3];vi+=6;
+    for(var j4=0;j4<6;j4++)vArr[vi+j4]=grid[o1v+j4];vi+=6;
+  }}
+  vCnt=vTot;gl.bindBuffer(gl.ARRAY_BUFFER,vBuf);gl.bufferData(gl.ARRAY_BUFFER,vArr,gl.STATIC_DRAW);
+
+  /* COLOR MIX ghosts */
+  buildMixVerts(grid,tR,tC);
+
   dbg.textContent=sW+"\u00d7"+sH+" | SUB"+sub+" | "+Math.round(tot/1000)+"K";
+}
+
+/*
+ * COLOR MIX — PHOTON SCOPE method, optimized.
+ * All arrays pre-allocated via counted passes. No Array.push().
+ */
+function buildMixVerts(grid,tR,tC){
+  if(!gl)return;
+  var tot=tR*tC;
+  var empty=new Float32Array(0);
+
+  if(mix<0.001){
+    mxPCnt=0;mxLCnt=0;mxVCnt=0;
+    gl.bindBuffer(gl.ARRAY_BUFFER,mxPBuf);gl.bufferData(gl.ARRAY_BUFFER,empty,gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,mxLBuf);gl.bufferData(gl.ARRAY_BUFFER,empty,gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER,mxVBuf);gl.bufferData(gl.ARRAY_BUFFER,empty,gl.STATIC_DRAW);
+    return;
+  }
+
+  var thr=0.006;
+  var invG=1.0/gamma;
+
+  /* Per-point ghost Y positions and validity */
+  var ghYR=new Float32Array(tot);
+  var ghYG=new Float32Array(tot);
+  var ghYB=new Float32Array(tot);
+  var fR=new Uint8Array(tot); /* flags: valid R/G/B ghost */
+  var fG=new Uint8Array(tot);
+  var fB=new Uint8Array(tot);
+
+  /* Pass 1: compute ghost Y, count valid points */
+  var ptCnt=0;
+  for(var i=0;i<tot;i++){
+    var gi6=i*6;
+    var yBase=grid[gi6+1],cr=grid[gi6+2],cg=grid[gi6+3],cb=grid[gi6+4];
+    var yrG=Math.pow(cr,invG),ygG=Math.pow(cg,invG),ybG=Math.pow(cb,invG);
+    var yRp=invert?(1.0-yrG):yrG;
+    var yGp=invert?(1.0-ygG):ygG;
+    var yBp=invert?(1.0-ybG):ybG;
+    ghYR[i]=yRp;ghYG[i]=yGp;ghYB[i]=yBp;
+    if(Math.abs(yRp-yBase)>thr){fR[i]=1;ptCnt++}
+    if(Math.abs(yGp-yBase)>thr){fG[i]=1;ptCnt++}
+    if(Math.abs(yBp-yBase)>thr){fB[i]=1;ptCnt++}
+  }
+
+  /* Points buffer */
+  var mxP=new Float32Array(ptCnt*6);
+  var pi=0;
+  for(var i=0;i<tot;i++){
+    var gi6=i*6;
+    var x=grid[gi6],cr=grid[gi6+2],cg=grid[gi6+3],cb=grid[gi6+4],lG=grid[gi6+5];
+    if(fR[i]){mxP[pi]=x;mxP[pi+1]=ghYR[i];mxP[pi+2]=cr*mix;mxP[pi+3]=0;mxP[pi+4]=0;mxP[pi+5]=lG;pi+=6}
+    if(fG[i]){mxP[pi]=x;mxP[pi+1]=ghYG[i];mxP[pi+2]=0;mxP[pi+3]=cg*mix;mxP[pi+4]=0;mxP[pi+5]=lG;pi+=6}
+    if(fB[i]){mxP[pi]=x;mxP[pi+1]=ghYB[i];mxP[pi+2]=0;mxP[pi+3]=0;mxP[pi+4]=cb*mix;mxP[pi+5]=lG;pi+=6}
+  }
+  mxPCnt=ptCnt;
+  gl.bindBuffer(gl.ARRAY_BUFFER,mxPBuf);gl.bufferData(gl.ARRAY_BUFFER,mxP,gl.STATIC_DRAW);
+
+  /* Lines buffer (horizontal) — count pass */
+  var hCnt=0;
+  for(var row=0;row<tR;row++){
+    var rb=row*tC;
+    for(var c=0;c<tC-1;c++){
+      var i0=rb+c,i1=i0+1;
+      if(fR[i0]&&fR[i1])hCnt++;
+      if(fG[i0]&&fG[i1])hCnt++;
+      if(fB[i0]&&fB[i1])hCnt++;
+    }
+  }
+  var mxL=new Float32Array(hCnt*12);
+  var hi=0;
+  for(var row=0;row<tR;row++){
+    var rb=row*tC;
+    for(var c=0;c<tC-1;c++){
+      var i0=rb+c,i1=i0+1;
+      var g0=i0*6,g1=i1*6;
+      if(fR[i0]&&fR[i1]){
+        mxL[hi]=grid[g0];mxL[hi+1]=ghYR[i0];mxL[hi+2]=grid[g0+2]*mix;mxL[hi+3]=0;mxL[hi+4]=0;mxL[hi+5]=grid[g0+5];
+        mxL[hi+6]=grid[g1];mxL[hi+7]=ghYR[i1];mxL[hi+8]=grid[g1+2]*mix;mxL[hi+9]=0;mxL[hi+10]=0;mxL[hi+11]=grid[g1+5];hi+=12;
+      }
+      if(fG[i0]&&fG[i1]){
+        mxL[hi]=grid[g0];mxL[hi+1]=ghYG[i0];mxL[hi+2]=0;mxL[hi+3]=grid[g0+3]*mix;mxL[hi+4]=0;mxL[hi+5]=grid[g0+5];
+        mxL[hi+6]=grid[g1];mxL[hi+7]=ghYG[i1];mxL[hi+8]=0;mxL[hi+9]=grid[g1+3]*mix;mxL[hi+10]=0;mxL[hi+11]=grid[g1+5];hi+=12;
+      }
+      if(fB[i0]&&fB[i1]){
+        mxL[hi]=grid[g0];mxL[hi+1]=ghYB[i0];mxL[hi+2]=0;mxL[hi+3]=0;mxL[hi+4]=grid[g0+4]*mix;mxL[hi+5]=grid[g0+5];
+        mxL[hi+6]=grid[g1];mxL[hi+7]=ghYB[i1];mxL[hi+8]=0;mxL[hi+9]=0;mxL[hi+10]=grid[g1+4]*mix;mxL[hi+11]=grid[g1+5];hi+=12;
+      }
+    }
+  }
+  mxLCnt=hCnt*2;
+  gl.bindBuffer(gl.ARRAY_BUFFER,mxLBuf);gl.bufferData(gl.ARRAY_BUFFER,mxL,gl.STATIC_DRAW);
+
+  /* Cols buffer (vertical) — count pass */
+  var vcCnt=0;
+  for(var col=0;col<tC;col++){
+    for(var rw=0;rw<tR-1;rw++){
+      var i0=rw*tC+col,i1=i0+tC;
+      if(fR[i0]&&fR[i1])vcCnt++;
+      if(fG[i0]&&fG[i1])vcCnt++;
+      if(fB[i0]&&fB[i1])vcCnt++;
+    }
+  }
+  var mxV=new Float32Array(vcCnt*12);
+  var vci=0;
+  for(var col=0;col<tC;col++){
+    for(var rw=0;rw<tR-1;rw++){
+      var i0=rw*tC+col,i1=i0+tC;
+      var g0=i0*6,g1=i1*6;
+      if(fR[i0]&&fR[i1]){
+        mxV[vci]=grid[g0];mxV[vci+1]=ghYR[i0];mxV[vci+2]=grid[g0+2]*mix;mxV[vci+3]=0;mxV[vci+4]=0;mxV[vci+5]=grid[g0+5];
+        mxV[vci+6]=grid[g1];mxV[vci+7]=ghYR[i1];mxV[vci+8]=grid[g1+2]*mix;mxV[vci+9]=0;mxV[vci+10]=0;mxV[vci+11]=grid[g1+5];vci+=12;
+      }
+      if(fG[i0]&&fG[i1]){
+        mxV[vci]=grid[g0];mxV[vci+1]=ghYG[i0];mxV[vci+2]=0;mxV[vci+3]=grid[g0+3]*mix;mxV[vci+4]=0;mxV[vci+5]=grid[g0+5];
+        mxV[vci+6]=grid[g1];mxV[vci+7]=ghYG[i1];mxV[vci+8]=0;mxV[vci+9]=grid[g1+3]*mix;mxV[vci+10]=0;mxV[vci+11]=grid[g1+5];vci+=12;
+      }
+      if(fB[i0]&&fB[i1]){
+        mxV[vci]=grid[g0];mxV[vci+1]=ghYB[i0];mxV[vci+2]=0;mxV[vci+3]=0;mxV[vci+4]=grid[g0+4]*mix;mxV[vci+5]=grid[g0+5];
+        mxV[vci+6]=grid[g1];mxV[vci+7]=ghYB[i1];mxV[vci+8]=0;mxV[vci+9]=0;mxV[vci+10]=grid[g1+4]*mix;mxV[vci+11]=grid[g1+5];vci+=12;
+      }
+    }
+  }
+  mxVCnt=vcCnt*2;
+  gl.bindBuffer(gl.ARRAY_BUFFER,mxVBuf);gl.bufferData(gl.ARRAY_BUFFER,mxV,gl.STATIC_DRAW);
+}
+
+function drawPass(buf,cnt,drawType){
+  if(cnt===0)return;
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  var aP=gl.getAttribLocation(prog,"a_p"),aC=gl.getAttribLocation(prog,"a_c"),aL=gl.getAttribLocation(prog,"a_l");
+  gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,24,0);
+  gl.enableVertexAttribArray(aC);gl.vertexAttribPointer(aC,3,gl.FLOAT,false,24,8);
+  gl.enableVertexAttribArray(aL);gl.vertexAttribPointer(aL,1,gl.FLOAT,false,24,20);
+  gl.drawArrays(drawType,0,cnt);
+  gl.disableVertexAttribArray(aP);gl.disableVertexAttribArray(aC);gl.disableVertexAttribArray(aL);
 }
 
 function render(){
@@ -368,14 +569,19 @@ function render(){
   gl.viewport(0,0,w,h);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
   gl.useProgram(prog);gl.uniform1f(u_ps,ptSz*dpr);gl.uniform1f(u_w,weight);gl.uniform3f(u_cm,cR,cG,cB);gl.uniform1f(u_sat,sat);
-  var buf=mode==="lines"?lBuf:pBuf,cnt=mode==="lines"?lCnt:pCnt,dt=mode==="lines"?gl.LINES:gl.POINTS;
-  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-  var aP=gl.getAttribLocation(prog,"a_p"),aC=gl.getAttribLocation(prog,"a_c"),aL=gl.getAttribLocation(prog,"a_l");
-  gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,2,gl.FLOAT,false,24,0);
-  gl.enableVertexAttribArray(aC);gl.vertexAttribPointer(aC,3,gl.FLOAT,false,24,8);
-  gl.enableVertexAttribArray(aL);gl.vertexAttribPointer(aL,1,gl.FLOAT,false,24,20);
-  gl.drawArrays(dt,0,cnt);
-  gl.disableVertexAttribArray(aP);gl.disableVertexAttribArray(aC);gl.disableVertexAttribArray(aL);
+
+  if(mode==="points"){drawPass(pBuf,pCnt,gl.POINTS)}
+  else if(mode==="lines"){drawPass(lBuf,lCnt,gl.LINES)}
+  else if(mode==="cols"){drawPass(vBuf,vCnt,gl.LINES)}
+  else if(mode==="both"){drawPass(lBuf,lCnt,gl.LINES);drawPass(vBuf,vCnt,gl.LINES)}
+
+  if(mix>0.001){
+    if(mode==="points"){drawPass(mxPBuf,mxPCnt,gl.POINTS)}
+    else if(mode==="lines"){drawPass(mxLBuf,mxLCnt,gl.LINES)}
+    else if(mode==="cols"){drawPass(mxVBuf,mxVCnt,gl.LINES)}
+    else if(mode==="both"){drawPass(mxLBuf,mxLCnt,gl.LINES);drawPass(mxVBuf,mxVCnt,gl.LINES)}
+  }
+
   if(ug){
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.disable(gl.BLEND);
     gl.useProgram(progG);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,fbTex);
