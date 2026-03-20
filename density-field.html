@@ -95,7 +95,6 @@ var isDsk=isMac||/Windows/.test(ua)||(/Linux/.test(ua)&&!/Android/.test(ua));
 var P={maxVerts:isDsk?80000000:12000000,maxSub:isDsk?16:8,defSub:isDsk?2:1,
        resMin:isDsk?256:128,resMax:isDsk?4096:1024,resDef:isDsk?1024:512};
 if(isDsk)document.body.className="desktop";
-
 var gc=document.getElementById("gc"),gv=document.getElementById("gv");
 var cw=document.getElementById("cw"),es=document.getElementById("es"),sp=document.getElementById("sp");
 var inf=document.getElementById("inf"),fi=document.getElementById("fi"),st=document.getElementById("st");
@@ -114,10 +113,8 @@ var sHQ=document.getElementById("sHQ"),vHQ=document.getElementById("vHQ");
 var mP=document.getElementById("mP"),mL=document.getElementById("mL"),mI=document.getElementById("mI");
 var mC=document.getElementById("mC"),mB=document.getElementById("mB");
 var dbg=document.getElementById("dbg");
-
 sRes.min=P.resMin;sRes.max=P.resMax;sRes.value=P.resDef;vRes.textContent=P.resDef.toString();
 sSu.max=P.maxSub;sSu.value=P.defSub;vSu.textContent=P.defSub.toString();
-
 var origImg=null,sd=null,sW=0,sH=0,natW=0,natH=0;
 var gl=null,prog=null,progG=null;
 var lBuf=null,pBuf=null,vBuf=null,lCnt=0,pCnt=0,vCnt=0;
@@ -128,7 +125,6 @@ var gamma=1.0,weight=0.020,ptSz=0.7,subdiv=P.defSub,glow=0.25;
 var cR=1.0,cG=1.0,cB=1.0,sat=1.0,procRes=P.resDef,hqScale=3;
 var invert=false;
 var u_ps,u_w,u_cm,u_sat,u_tex,u_res,u_glow;
-
 var mipChain=[];
 function buildMipChain(img){
   mipChain=[];var w=img.naturalWidth,h=img.naturalHeight;
@@ -153,7 +149,6 @@ function stepDownResize(tw,th){
   if(ctx.imageSmoothingQuality!==undefined)ctx.imageSmoothingQuality="high";
   ctx.drawImage(mipChain[best].canvas,0,0,tw,th);return oc;
 }
-
 function updateModeUI(){
   mP.className=(mode==="points")?"mb ac":"mb";
   mL.className=(mode==="lines")?"mb ac":"mb";
@@ -165,7 +160,6 @@ mL.onclick=function(){mode="lines";updateModeUI();schedF()};
 mC.onclick=function(){mode="cols";updateModeUI();schedF()};
 mB.onclick=function(){mode="both";updateModeUI();schedF()};
 mI.onclick=function(){invert=!invert;mI.className=invert?"mb ac":"mb";needBuild=true;schedF()};
-
 sRes.oninput=function(){procRes=parseInt(this.value);vRes.textContent=procRes.toString();needReproc=true;schedF()};
 sGa.oninput=function(){gamma=parseFloat(this.value);vGa.textContent=gamma.toFixed(2);needBuild=true;schedF()};
 sWe.oninput=function(){weight=parseFloat(this.value);vWe.textContent=weight.toFixed(3);schedF()};
@@ -177,7 +171,6 @@ sR.oninput=function(){cR=parseFloat(this.value);vR.textContent=cR.toFixed(2);sch
 sG.oninput=function(){cG=parseFloat(this.value);vG.textContent=cG.toFixed(2);schedF()};
 sB.oninput=function(){cB=parseFloat(this.value);vB.textContent=cB.toFixed(2);schedF()};
 sHQ.oninput=function(){hqScale=parseInt(this.value);vHQ.textContent=hqScale+"x"};
-
 function schedF(){
   if(rafId!==null)return;
   rafId=requestAnimationFrame(function(){
@@ -187,7 +180,6 @@ function schedF(){
     render();
   });
 }
-
 bPh.onclick=function(){fi.click()};
 fi.onchange=function(e){
   var f=e.target.files[0];if(!f)return;
@@ -200,7 +192,6 @@ if(isDsk){
   cw.ondrop=function(e){e.preventDefault();var f=e.dataTransfer.files[0];if(!f||!f.type.match(/image/))return;
     var rd=new FileReader();rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;buildMipChain(img);reprocess()};img.src=ev.target.result};rd.readAsDataURL(f)};
 }
-
 function reprocess(){
   if(!origImg)return;
   var le=Math.max(natW,natH),sc=1;
@@ -214,7 +205,6 @@ function reprocess(){
   inf.textContent=natW+"\u00d7"+natH+" \u2192 "+sW+"\u00d7"+sH;
   needBuild=true;setupCanvas();buildVerts();render();drawGrid();
 }
-
 function setupCanvas(){
   if(!sd)return;if(!gl&&!initGL())return;
   var dpr=window.devicePixelRatio||1;
@@ -225,7 +215,6 @@ function setupCanvas(){
   gc.style.width=dW+"px";gc.style.height=dH+"px";
   gl.viewport(0,0,gc.width,gc.height);setupFB(gc.width,gc.height);
 }
-
 function initGL(){
   gl=gc.getContext("webgl",{alpha:false,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:true});
   if(!gl){alert("WebGL unavailable");return false}
@@ -246,7 +235,6 @@ function initGL(){
   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,0,1,1,0,1]),gl.STATIC_DRAW);
   return true;
 }
-
 function setupFB(w,h){
   if(fbW===w&&fbH===h)return;fbW=w;fbH=h;
   if(fbTex)gl.deleteTexture(fbTex);if(fb)gl.deleteFramebuffer(fb);
@@ -260,63 +248,32 @@ function setupFB(w,h){
   gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,fbTex,0);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
 }
-
 function getLum(px,r,c){if(r<0)r=0;if(r>=sH)r=sH-1;if(c<0)c=0;if(c>=sW)c=sW-1;var i=(r*sW+c)*4;return 0.2126*px[i]/255+0.7152*px[i+1]/255+0.0722*px[i+2]/255}
 function getRGB(px,r,c){if(r<0)r=0;if(r>=sH)r=sH-1;if(c<0)c=0;if(c>=sW)c=sW-1;var i=(r*sW+c)*4;return[px[i]/255,px[i+1]/255,px[i+2]/255]}
 function catR(p0,p1,p2,p3,t){var t2=t*t,t3=t2*t;return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3)}
 function cl01(v){return v<0?0:v>1?1:v}
-
 function buildVerts(){
   if(!sd||!gl)return;
   var px=sd.data,invG=1.0/gamma,sub=subdiv;
   var tR=(sH-1)*sub+1,tC=(sW-1)*sub+1,tot=tR*tC;
   while(tot>P.maxVerts&&sub>1){sub--;tR=(sH-1)*sub+1;tC=(sW-1)*sub+1;tot=tR*tC}
   if(sub!==subdiv){subdiv=sub;sSu.value=sub;vSu.textContent=sub.toString()}
-
-  /* Phase 1: compute raw data per point (unsorted) */
-  /* Store as columns: for each column ci, an array of {lum, lumG, r, g, b} for each row ri */
-  var colData=new Array(tC);
-  for(var ci=0;ci<tC;ci++){
-    colData[ci]=new Array(tR);
-    var scf=ci/sub,sc0=Math.floor(scf),fC=scf-sc0;
-    for(var ri=0;ri<tR;ri++){
-      var srf=ri/sub,sr0=Math.floor(srf),fR=srf-sr0;
+  var grid=new Float32Array(tot*6),gi=0;
+  for(var ri=0;ri<tR;ri++){
+    var srf=ri/sub,sr0=Math.floor(srf),fR=srf-sr0;
+    for(var ci=0;ci<tC;ci++){
+      var scf=ci/sub,sc0=Math.floor(scf),fC=scf-sc0;
       var lum,r,g,b;
       if(fR<0.001&&fC<0.001){lum=getLum(px,sr0,sc0);var rgb=getRGB(px,sr0,sc0);r=rgb[0];g=rgb[1];b=rgb[2]}
       else if(fR<0.001){var cc=[sc0-1,sc0,sc0+1,sc0+2];lum=cl01(catR(getLum(px,sr0,cc[0]),getLum(px,sr0,cc[1]),getLum(px,sr0,cc[2]),getLum(px,sr0,cc[3]),fC));var a0=getRGB(px,sr0,cc[0]),a1=getRGB(px,sr0,cc[1]),a2=getRGB(px,sr0,cc[2]),a3=getRGB(px,sr0,cc[3]);r=cl01(catR(a0[0],a1[0],a2[0],a3[0],fC));g=cl01(catR(a0[1],a1[1],a2[1],a3[1],fC));b=cl01(catR(a0[2],a1[2],a2[2],a3[2],fC))}
       else if(fC<0.001){var rr=[sr0-1,sr0,sr0+1,sr0+2];lum=cl01(catR(getLum(px,rr[0],sc0),getLum(px,rr[1],sc0),getLum(px,rr[2],sc0),getLum(px,rr[3],sc0),fR));var b0=getRGB(px,rr[0],sc0),b1=getRGB(px,rr[1],sc0),b2=getRGB(px,rr[2],sc0),b3=getRGB(px,rr[3],sc0);r=cl01(catR(b0[0],b1[0],b2[0],b3[0],fR));g=cl01(catR(b0[1],b1[1],b2[1],b3[1],fR));b=cl01(catR(b0[2],b1[2],b2[2],b3[2],fR))}
       else{var rrr=[sr0-1,sr0,sr0+1,sr0+2],ccc=[sc0-1,sc0,sc0+1,sc0+2];var lC=[0,0,0,0],rC=[0,0,0,0],gC=[0,0,0,0],bC=[0,0,0,0];for(var k=0;k<4;k++){lC[k]=cl01(catR(getLum(px,rrr[0],ccc[k]),getLum(px,rrr[1],ccc[k]),getLum(px,rrr[2],ccc[k]),getLum(px,rrr[3],ccc[k]),fR));var v0=getRGB(px,rrr[0],ccc[k]),v1=getRGB(px,rrr[1],ccc[k]),v2=getRGB(px,rrr[2],ccc[k]),v3=getRGB(px,rrr[3],ccc[k]);rC[k]=cl01(catR(v0[0],v1[0],v2[0],v3[0],fR));gC[k]=cl01(catR(v0[1],v1[1],v2[1],v3[1],fR));bC[k]=cl01(catR(v0[2],v1[2],v2[2],v3[2],fR))}lum=cl01(catR(lC[0],lC[1],lC[2],lC[3],fC));r=cl01(catR(rC[0],rC[1],rC[2],rC[3],fC));g=cl01(catR(gC[0],gC[1],gC[2],gC[3],fC));b=cl01(catR(bC[0],bC[1],bC[2],bC[3],fC))}
       var lumG=Math.pow(lum,invG);
-      colData[ci][ri]={lumG:lumG,r:r,g:g,b:b};
+      var yPos=invert?(1.0-lumG):lumG;
+      grid[gi]=(ci+0.5)/tC;grid[gi+1]=yPos;grid[gi+2]=r;grid[gi+3]=g;grid[gi+4]=b;grid[gi+5]=lumG;gi+=6;
     }
   }
-
-  /* Phase 2: sort each column by luminance */
-  for(var ci2=0;ci2<tC;ci2++){
-    colData[ci2].sort(function(a,b){return a.lumG-b.lumG});
-  }
-
-  /* Phase 3: build grid with sorted Y positions (rank-based) */
-  /* grid layout: row = rank (0=darkest, tR-1=brightest), col = ci */
-  var grid=new Float32Array(tot*6),gi=0;
-  for(var rank=0;rank<tR;rank++){
-    var yPos=rank/(tR-1);
-    if(invert)yPos=1.0-yPos;
-    for(var ci3=0;ci3<tC;ci3++){
-      var d=colData[ci3][rank];
-      grid[gi]=(ci3+0.5)/tC;
-      grid[gi+1]=yPos;
-      grid[gi+2]=d.r;
-      grid[gi+3]=d.g;
-      grid[gi+4]=d.b;
-      grid[gi+5]=d.lumG;
-      gi+=6;
-    }
-  }
-
   pCnt=tot;gl.bindBuffer(gl.ARRAY_BUFFER,pBuf);gl.bufferData(gl.ARRAY_BUFFER,grid,gl.STATIC_DRAW);
-
-  /* Horizontal lines: connect adjacent columns within same rank */
   var lTot=tR*(tC-1)*2,lArr=new Float32Array(lTot*6),li=0;
   for(var row=0;row<tR;row++){var base=row*tC*6;for(var c=0;c<tC-1;c++){
     var o0=base+c*6,o1=base+(c+1)*6;
@@ -324,8 +281,6 @@ function buildVerts(){
     for(var j2=0;j2<6;j2++)lArr[li+j2]=grid[o1+j2];li+=6;
   }}
   lCnt=lTot;gl.bindBuffer(gl.ARRAY_BUFFER,lBuf);gl.bufferData(gl.ARRAY_BUFFER,lArr,gl.STATIC_DRAW);
-
-  /* Vertical lines: connect adjacent ranks within same column */
   var vTot=tC*(tR-1)*2,vArr=new Float32Array(vTot*6),vi=0;
   for(var col=0;col<tC;col++){for(var row2=0;row2<tR-1;row2++){
     var i0=(row2*tC+col)*6,i1=((row2+1)*tC+col)*6;
@@ -333,10 +288,8 @@ function buildVerts(){
     for(var j4=0;j4<6;j4++)vArr[vi+j4]=grid[i1+j4];vi+=6;
   }}
   vCnt=vTot;gl.bindBuffer(gl.ARRAY_BUFFER,vBuf);gl.bufferData(gl.ARRAY_BUFFER,vArr,gl.STATIC_DRAW);
-
   dbg.textContent=sW+"\u00d7"+sH+" | SUB"+sub+" | "+Math.round(tot/1000)+"K";
 }
-
 function drawPass(buf,cnt,dt){
   gl.bindBuffer(gl.ARRAY_BUFFER,buf);
   var aP=gl.getAttribLocation(prog,"a_p"),aC=gl.getAttribLocation(prog,"a_c"),aL=gl.getAttribLocation(prog,"a_l");
@@ -346,7 +299,6 @@ function drawPass(buf,cnt,dt){
   gl.drawArrays(dt,0,cnt);
   gl.disableVertexAttribArray(aP);gl.disableVertexAttribArray(aC);gl.disableVertexAttribArray(aL);
 }
-
 function render(){
   if(!gl||pCnt===0)return;
   var w=gc.width,h=gc.height,dpr=window.devicePixelRatio||1,ug=glow>0.01;
@@ -367,7 +319,6 @@ function render(){
     gl.drawArrays(gl.TRIANGLES,0,6);gl.disableVertexAttribArray(aP2);
   }
 }
-
 function drawGrid(){
   if(!dW||!dH)return;var dpr=window.devicePixelRatio||1;
   gv.width=Math.round(dW*dpr);gv.height=Math.round(dH*dpr);
@@ -384,7 +335,6 @@ function drawGrid(){
     var label=invert?(1023-v):v;ctx.fillText(label.toString(),1,y);
   }
 }
-
 bHQ.onclick=function(){
   if(!sd||!gl)return;st.style.display="block";
   setTimeout(function(){
@@ -403,7 +353,6 @@ bHQ.onclick=function(){
     catch(e){st.style.display="none";fallSv(ec)}
   },50);
 };
-
 bSv.onclick=function(){
   if(!gc.width||!gc.height||!gl)return;render();
   var w=gc.width,h=gc.height,buf=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf);
@@ -412,11 +361,9 @@ bSv.onclick=function(){
   ctx.putImageData(id,0,0);
   try{ec.toBlob(function(blob){if(!blob){fallSv(ec);return}doShr(blob,"density-field.png")},"image/png")}catch(e){fallSv(ec)}
 };
-
 function doShr(blob,name){if(navigator.share&&navigator.canShare){try{var f=new File([blob],name,{type:"image/png"});var s={files:[f]};if(navigator.canShare(s)){navigator.share(s).catch(function(){dlB(blob,name)});return}}catch(e){}}dlB(blob,name)}
 function dlB(blob,name){var u=URL.createObjectURL(blob);var a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u)},2000)}
 function fallSv(cv){var u=cv.toDataURL("image/png");var a=document.createElement("a");a.href=u;a.download="density-field.png";document.body.appendChild(a);a.click();document.body.removeChild(a)}
-
 var rT=null;window.onresize=function(){clearTimeout(rT);rT=setTimeout(function(){if(sd){setupCanvas();render();drawGrid()}},200)};
 if(isDsk){document.onkeydown=function(e){if(e.key==="o"||e.key==="O"){fi.click();e.preventDefault()}if(e.key==="s"&&(e.metaKey||e.ctrlKey)){bSv.click();e.preventDefault()}}}
 })();
