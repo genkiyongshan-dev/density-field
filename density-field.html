@@ -183,6 +183,61 @@ var cR=1.0,cG=1.0,cB=1.0,sat=1.0,procRes=P.resDef,hqScale=3;
 var invert=false;
 var u_ps,u_w,u_cm,u_sat,u_tex,u_res,u_glow;
 
+/* ---- Mipmap cache for step-down resize ---- */
+var mipChain=[];  /* array of {canvas, w, h} from original down to smallest */
+
+function buildMipChain(img){
+  mipChain=[];
+  var w=img.naturalWidth,h=img.naturalHeight;
+  /* Level 0: original image drawn onto canvas */
+  var c0=document.createElement("canvas");
+  c0.width=w;c0.height=h;
+  var ctx0=c0.getContext("2d");
+  ctx0.drawImage(img,0,0,w,h);
+  mipChain.push({canvas:c0,w:w,h:h});
+  /* Generate half-size levels down to ~64px longest edge */
+  while(w>64&&h>64){
+    var nw=Math.round(w/2);
+    var nh=Math.round(h/2);
+    if(nw<2)nw=2;
+    if(nh<2)nh=2;
+    var c=document.createElement("canvas");
+    c.width=nw;c.height=nh;
+    var ctx=c.getContext("2d");
+    ctx.imageSmoothingEnabled=true;
+    /* Use 'high' quality if available (Safari 15+, Chrome) */
+    if(ctx.imageSmoothingQuality!==undefined){
+      ctx.imageSmoothingQuality="high";
+    }
+    ctx.drawImage(mipChain[mipChain.length-1].canvas,0,0,nw,nh);
+    mipChain.push({canvas:c,w:nw,h:nh});
+    w=nw;h=nh;
+  }
+}
+
+function stepDownResize(targetW,targetH){
+  /* Find the smallest mip level that is >= targetW and >= targetH */
+  var best=0;
+  for(var i=0;i<mipChain.length;i++){
+    if(mipChain[i].w>=targetW&&mipChain[i].h>=targetH){
+      best=i;
+    }
+  }
+  /* Now 'best' is the smallest mip that is still larger than target.
+     The ratio from best to target should be <= 2x for clean downscale. */
+  var src=mipChain[best];
+  var oc=document.createElement("canvas");
+  oc.width=targetW;oc.height=targetH;
+  var ctx=oc.getContext("2d");
+  ctx.imageSmoothingEnabled=true;
+  if(ctx.imageSmoothingQuality!==undefined){
+    ctx.imageSmoothingQuality="high";
+  }
+  ctx.drawImage(src.canvas,0,0,targetW,targetH);
+  return oc;
+}
+/* ---- End mipmap ---- */
+
 mP.onclick=function(){mode="points";mP.className="mb ac";mL.className="mb";schedF()};
 mL.onclick=function(){mode="lines";mL.className="mb ac";mP.className="mb";schedF()};
 mI.onclick=function(){invert=!invert;mI.className=invert?"mb ac":"mb";needBuild=true;schedF()};
@@ -213,13 +268,13 @@ bPh.onclick=function(){fi.click()};
 fi.onchange=function(e){
   var f=e.target.files[0];if(!f)return;
   var rd=new FileReader();
-  rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;reprocess()};img.src=ev.target.result};
+  rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;buildMipChain(img);reprocess()};img.src=ev.target.result};
   rd.readAsDataURL(f);
 };
 if(isDsk){
   cw.ondragover=function(e){e.preventDefault()};
   cw.ondrop=function(e){e.preventDefault();var f=e.dataTransfer.files[0];if(!f||!f.type.match(/image/))return;
-    var rd=new FileReader();rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;reprocess()};img.src=ev.target.result};rd.readAsDataURL(f)};
+    var rd=new FileReader();rd.onload=function(ev){var img=new Image();img.onload=function(){origImg=img;natW=img.naturalWidth;natH=img.naturalHeight;buildMipChain(img);reprocess()};img.src=ev.target.result};rd.readAsDataURL(f)};
 }
 
 function reprocess(){
@@ -228,9 +283,18 @@ function reprocess(){
   if(le>procRes)sc=procRes/le;
   sW=Math.round(natW*sc);sH=Math.round(natH*sc);
   if(sW<2)sW=2;if(sH<2)sH=2;
-  var oc=document.createElement("canvas");oc.width=sW;oc.height=sH;
-  var ctx=oc.getContext("2d");ctx.drawImage(origImg,0,0,sW,sH);
-  sd=ctx.getImageData(0,0,sW,sH);
+
+  /* Use mipmap step-down resize instead of direct drawImage */
+  var oc;
+  if(mipChain.length>0){
+    oc=stepDownResize(sW,sH);
+  }else{
+    /* Fallback: direct resize (shouldn't happen) */
+    oc=document.createElement("canvas");oc.width=sW;oc.height=sH;
+    var ctx=oc.getContext("2d");ctx.drawImage(origImg,0,0,sW,sH);
+  }
+  sd=oc.getContext("2d").getImageData(0,0,sW,sH);
+
   sp.src=oc.toDataURL();sp.style.display="block";es.style.display="none";
   inf.textContent=natW+"\u00d7"+natH+" \u2192 "+sW+"\u00d7"+sH;
   needBuild=true;setupCanvas();buildVerts();render();drawGrid();
@@ -250,7 +314,6 @@ function setupCanvas(){
 function initGL(){
   gl=gc.getContext("webgl",{alpha:false,antialias:true,premultipliedAlpha:false,preserveDrawingBuffer:true});
   if(!gl){alert("WebGL unavailable");return false}
-  /* Saturation is done in fragment shader via uniform */
   var vsM=["attribute vec2 a_p;","attribute vec3 a_c;","attribute float a_l;",
     "uniform float u_ps;","uniform float u_w;","uniform vec3 u_cm;",
     "varying vec3 v_rgb;","varying float v_a;","varying float v_l;",
