@@ -53,27 +53,19 @@ body.desktop .sep{margin:12px 0}
 </head>
 <body>
 <div class="app">
-  <div class="hd">
-    <span class="ht">DENSITY FIELD</span>
-    <span class="hi" id="inf">NO IMAGE</span>
-  </div>
+  <div class="hd"><span class="ht">DENSITY FIELD</span><span class="hi" id="inf">NO IMAGE</span></div>
   <div class="main">
     <div class="cw" id="cw">
-      <canvas id="gc"></canvas>
-      <canvas class="gov" id="gv"></canvas>
+      <canvas id="gc"></canvas><canvas class="gov" id="gv"></canvas>
       <img class="sp" id="sp" alt="">
       <div class="es" id="es"><div class="ic">&#9674;</div><div class="lb">SELECT PHOTO</div></div>
       <div class="st" id="st">RENDERING...</div>
     </div>
     <div class="panel">
-      <div class="mr">
-        <span class="cl">MODE</span>
-        <button class="mb" id="mP">POINTS</button>
-        <button class="mb ac" id="mL">LINES</button>
-        <button class="mb" id="mC">COLS</button>
-        <button class="mb" id="mB">BOTH</button>
-        <button class="mb" id="mI">INVERT</button>
-      </div>
+      <div class="mr"><span class="cl">MODE</span>
+        <button class="mb" id="mP">POINTS</button><button class="mb ac" id="mL">LINES</button>
+        <button class="mb" id="mC">COLS</button><button class="mb" id="mB">BOTH</button>
+        <button class="mb" id="mI">INVERT</button></div>
       <div class="cr"><span class="cl">RES</span><input type="range" id="sRes" min="128" max="1024" step="64" value="512"><span class="cv" id="vRes">512</span></div>
       <div class="cr"><span class="cl">GAMMA</span><input type="range" id="sGa" min="0.2" max="3.0" step="0.05" value="1.0"><span class="cv" id="vGa">1.00</span></div>
       <div class="cr"><span class="cl">WEIGHT</span><input type="range" id="sWe" min="0.001" max="0.20" step="0.001" value="0.020"><span class="cv" id="vWe">0.020</span></div>
@@ -87,11 +79,7 @@ body.desktop .sep{margin:12px 0}
       <div class="cr"><span class="cl clb">BLUE</span><input type="range" id="sB" min="0" max="2.0" step="0.05" value="1.0"><span class="cv" id="vB">1.00</span></div>
       <div class="sep"></div>
       <div class="cr"><span class="cl">HQ</span><input type="range" id="sHQ" min="2" max="6" step="1" value="3"><span class="cv" id="vHQ">3x</span></div>
-      <div class="br">
-        <button class="bt btp" id="bPh">PHOTO</button>
-        <button class="bt" id="bHQ">HQ RENDER</button>
-        <button class="bt" id="bSv">SAVE</button>
-      </div>
+      <div class="br"><button class="bt btp" id="bPh">PHOTO</button><button class="bt" id="bHQ">HQ RENDER</button><button class="bt" id="bSv">SAVE</button></div>
       <div class="dbg" id="dbg"></div>
     </div>
   </div>
@@ -141,7 +129,6 @@ var cR=1.0,cG=1.0,cB=1.0,sat=1.0,procRes=P.resDef,hqScale=3;
 var invert=false;
 var u_ps,u_w,u_cm,u_sat,u_tex,u_res,u_glow;
 
-/* Mipmap */
 var mipChain=[];
 function buildMipChain(img){
   mipChain=[];var w=img.naturalWidth,h=img.naturalHeight;
@@ -167,7 +154,6 @@ function stepDownResize(tw,th){
   ctx.drawImage(mipChain[best].canvas,0,0,tw,th);return oc;
 }
 
-/* Mode UI */
 function updateModeUI(){
   mP.className=(mode==="points")?"mb ac":"mb";
   mL.className=(mode==="lines")?"mb ac":"mb";
@@ -286,24 +272,51 @@ function buildVerts(){
   var tR=(sH-1)*sub+1,tC=(sW-1)*sub+1,tot=tR*tC;
   while(tot>P.maxVerts&&sub>1){sub--;tR=(sH-1)*sub+1;tC=(sW-1)*sub+1;tot=tR*tC}
   if(sub!==subdiv){subdiv=sub;sSu.value=sub;vSu.textContent=sub.toString()}
-  var grid=new Float32Array(tot*6),gi=0;
-  for(var ri=0;ri<tR;ri++){
-    var srf=ri/sub,sr0=Math.floor(srf),fR=srf-sr0;
-    for(var ci=0;ci<tC;ci++){
-      var scf=ci/sub,sc0=Math.floor(scf),fC=scf-sc0;
+
+  /* Phase 1: compute raw data per point (unsorted) */
+  /* Store as columns: for each column ci, an array of {lum, lumG, r, g, b} for each row ri */
+  var colData=new Array(tC);
+  for(var ci=0;ci<tC;ci++){
+    colData[ci]=new Array(tR);
+    var scf=ci/sub,sc0=Math.floor(scf),fC=scf-sc0;
+    for(var ri=0;ri<tR;ri++){
+      var srf=ri/sub,sr0=Math.floor(srf),fR=srf-sr0;
       var lum,r,g,b;
       if(fR<0.001&&fC<0.001){lum=getLum(px,sr0,sc0);var rgb=getRGB(px,sr0,sc0);r=rgb[0];g=rgb[1];b=rgb[2]}
       else if(fR<0.001){var cc=[sc0-1,sc0,sc0+1,sc0+2];lum=cl01(catR(getLum(px,sr0,cc[0]),getLum(px,sr0,cc[1]),getLum(px,sr0,cc[2]),getLum(px,sr0,cc[3]),fC));var a0=getRGB(px,sr0,cc[0]),a1=getRGB(px,sr0,cc[1]),a2=getRGB(px,sr0,cc[2]),a3=getRGB(px,sr0,cc[3]);r=cl01(catR(a0[0],a1[0],a2[0],a3[0],fC));g=cl01(catR(a0[1],a1[1],a2[1],a3[1],fC));b=cl01(catR(a0[2],a1[2],a2[2],a3[2],fC))}
       else if(fC<0.001){var rr=[sr0-1,sr0,sr0+1,sr0+2];lum=cl01(catR(getLum(px,rr[0],sc0),getLum(px,rr[1],sc0),getLum(px,rr[2],sc0),getLum(px,rr[3],sc0),fR));var b0=getRGB(px,rr[0],sc0),b1=getRGB(px,rr[1],sc0),b2=getRGB(px,rr[2],sc0),b3=getRGB(px,rr[3],sc0);r=cl01(catR(b0[0],b1[0],b2[0],b3[0],fR));g=cl01(catR(b0[1],b1[1],b2[1],b3[1],fR));b=cl01(catR(b0[2],b1[2],b2[2],b3[2],fR))}
       else{var rrr=[sr0-1,sr0,sr0+1,sr0+2],ccc=[sc0-1,sc0,sc0+1,sc0+2];var lC=[0,0,0,0],rC=[0,0,0,0],gC=[0,0,0,0],bC=[0,0,0,0];for(var k=0;k<4;k++){lC[k]=cl01(catR(getLum(px,rrr[0],ccc[k]),getLum(px,rrr[1],ccc[k]),getLum(px,rrr[2],ccc[k]),getLum(px,rrr[3],ccc[k]),fR));var v0=getRGB(px,rrr[0],ccc[k]),v1=getRGB(px,rrr[1],ccc[k]),v2=getRGB(px,rrr[2],ccc[k]),v3=getRGB(px,rrr[3],ccc[k]);rC[k]=cl01(catR(v0[0],v1[0],v2[0],v3[0],fR));gC[k]=cl01(catR(v0[1],v1[1],v2[1],v3[1],fR));bC[k]=cl01(catR(v0[2],v1[2],v2[2],v3[2],fR))}lum=cl01(catR(lC[0],lC[1],lC[2],lC[3],fC));r=cl01(catR(rC[0],rC[1],rC[2],rC[3],fC));g=cl01(catR(gC[0],gC[1],gC[2],gC[3],fC));b=cl01(catR(bC[0],bC[1],bC[2],bC[3],fC))}
       var lumG=Math.pow(lum,invG);
-      var yPos=invert?(1.0-lumG):lumG;
-      grid[gi]=(ci+0.5)/tC;grid[gi+1]=yPos;grid[gi+2]=r;grid[gi+3]=g;grid[gi+4]=b;grid[gi+5]=lumG;gi+=6;
+      colData[ci][ri]={lumG:lumG,r:r,g:g,b:b};
     }
   }
+
+  /* Phase 2: sort each column by luminance */
+  for(var ci2=0;ci2<tC;ci2++){
+    colData[ci2].sort(function(a,b){return a.lumG-b.lumG});
+  }
+
+  /* Phase 3: build grid with sorted Y positions (rank-based) */
+  /* grid layout: row = rank (0=darkest, tR-1=brightest), col = ci */
+  var grid=new Float32Array(tot*6),gi=0;
+  for(var rank=0;rank<tR;rank++){
+    var yPos=rank/(tR-1);
+    if(invert)yPos=1.0-yPos;
+    for(var ci3=0;ci3<tC;ci3++){
+      var d=colData[ci3][rank];
+      grid[gi]=(ci3+0.5)/tC;
+      grid[gi+1]=yPos;
+      grid[gi+2]=d.r;
+      grid[gi+3]=d.g;
+      grid[gi+4]=d.b;
+      grid[gi+5]=d.lumG;
+      gi+=6;
+    }
+  }
+
   pCnt=tot;gl.bindBuffer(gl.ARRAY_BUFFER,pBuf);gl.bufferData(gl.ARRAY_BUFFER,grid,gl.STATIC_DRAW);
 
-  /* Horizontal lines (LINES mode): row-wise */
+  /* Horizontal lines: connect adjacent columns within same rank */
   var lTot=tR*(tC-1)*2,lArr=new Float32Array(lTot*6),li=0;
   for(var row=0;row<tR;row++){var base=row*tC*6;for(var c=0;c<tC-1;c++){
     var o0=base+c*6,o1=base+(c+1)*6;
@@ -312,7 +325,7 @@ function buildVerts(){
   }}
   lCnt=lTot;gl.bindBuffer(gl.ARRAY_BUFFER,lBuf);gl.bufferData(gl.ARRAY_BUFFER,lArr,gl.STATIC_DRAW);
 
-  /* Vertical lines (COLS mode): column-wise, connect adjacent rows */
+  /* Vertical lines: connect adjacent ranks within same column */
   var vTot=tC*(tR-1)*2,vArr=new Float32Array(vTot*6),vi=0;
   for(var col=0;col<tC;col++){for(var row2=0;row2<tR-1;row2++){
     var i0=(row2*tC+col)*6,i1=((row2+1)*tC+col)*6;
